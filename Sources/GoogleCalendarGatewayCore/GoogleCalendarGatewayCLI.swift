@@ -49,7 +49,7 @@ public struct GoogleCalendarGatewayCLI {
   }
 
   private func shouldShowHelp(_ parsed: ParsedArgs) -> Bool {
-    parsed.flags["help"] != nil || parsed.positionals.first == "help"
+    parsed.flags["help"] != nil || parsed.positionals.first == "help" || parsed.positionals == ["auth"]
   }
 
   private func runParsedCommand(
@@ -253,7 +253,8 @@ private func validateGlobalControlCommand(_ parsed: ParsedArgs, flag: String) th
   if parsed.flags[flag] != nil {
     try validateBooleanControlFlag(parsed.flags, flag)
   }
-  let allowedPositionals = parsed.positionals.first == "help" ? 1 : 0
+  let isAuthHelp = flag == "help" && parsed.positionals == ["auth"]
+  let allowedPositionals = parsed.positionals.first == "help" || isAuthHelp ? 1 : 0
   try validatePositionalCount(parsed.positionals, count: allowedPositionals)
 }
 

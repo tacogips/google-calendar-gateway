@@ -587,7 +587,7 @@ public struct GoogleCalendarGatewayService {
 public typealias GoogleCalendarGatewayClient = GoogleCalendarGatewayService
 
 public enum Version {
-  public static let current = "0.1.6"
+  public static let current = "0.1.7"
 }
 
 func validateSendUpdates(_ sendUpdates: String?) throws {

@@ -4,6 +4,15 @@ import Testing
 
 @Suite("Reader and writer CLI boundaries")
 struct CLIModeTests {
+  @Test func bareAuthShowsHelpBeforeLoadingConfiguration() {
+    for mode in [GoogleCalendarGatewayCLIMode.reader, .writer] {
+      let result = GoogleCalendarGatewayCLI(mode: mode).run(arguments: ["auth", "--config", "/missing/config.toml"], environment: [:])
+      #expect(result.exitCode == 0)
+      #expect(result.stdout.contains("auth login"))
+      #expect(result.stderr.isEmpty)
+    }
+  }
+
   @Test func helpMatchesMode() {
     for mode in [GoogleCalendarGatewayCLIMode.reader, .writer] {
       let result = GoogleCalendarGatewayCLI(mode: mode).run(arguments: ["--help"], environment: [:])
