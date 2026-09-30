@@ -12,7 +12,7 @@ let package = Package(
     .executable(name: "google-calendar-gateway-reader", targets: ["GoogleCalendarGatewayReader"]),
     .executable(name: "google-calendar-gateway-writer", targets: ["GoogleCalendarGatewayWriter"])
   ],
-  dependencies: [.package(url: "https://github.com/tacogips/google-gateway-auth.git", revision: "2951cd8829d94d0b16e2a3bfdca301e57bb1f862")],
+  dependencies: [.package(url: "https://github.com/tacogips/google-gateway-auth.git", revision: "13c40e24b11da9bab17046a918630fbb6aa6c147")],
   targets: [
     .target(name: "GoogleCalendarGatewayCore", dependencies: [.product(name: "GoogleGatewayAuth", package: "google-gateway-auth")]),
     .executableTarget(
