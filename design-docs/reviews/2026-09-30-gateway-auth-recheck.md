@@ -51,3 +51,42 @@ and authorized read checks before claiming clean browser login is complete.
 
 The available native computer-use tool failed to initialize, so Cloud Console
 registration could not be inspected through that tool during this recheck.
+
+## Published patch releases and installed verification
+
+| Gateway | Version |
+| --- | --- |
+| Calendar | 0.1.8 |
+| Gmail | 0.1.16 |
+| Documents / Sheets / Drive | 0.3.5 |
+| Analytics | 0.1.4 |
+| Marketing | 0.1.3 |
+| Document OCR | 0.1.3 |
+| Service | 0.1.4 |
+
+All seven source repositories were committed and pushed, and release archives
+were published for both supported macOS architectures. Calendar's signed,
+notarized DMGs were also published. All 13 Homebrew formulas passed strict
+formula audit, download, installed upgrade, and package tests. Calendar's Cask
+passed download and audit checks. The tap metadata workflow for commit
+`7661bdd4faa41a4c3c1ee5e4fdc064c89057ece1` succeeded; all 14 public API entries
+matched the published versions and committed Ruby source checksums. Both
+retired Calendar metadata endpoints returned HTTP 404.
+
+The final installed check passed 112 checks across all 28 commands: help,
+version, bare auth help, and local external-token readiness without disclosure.
+Calendar and Gmail status checks use their explicit default credential selector;
+these checks do not imply that every auth subcommand omits that selector.
+The installed Calendar writer also passed event creation dry run with an
+external fixture token and without an OAuth application client.
+
+Clean login was rechecked on every installed command. All 28 failed before
+Google browser authorization: 21 reported a missing application client and the
+seven Documents roles reported missing OAuth credential configuration. No real
+browser consent or live Google API acceptance is claimed.
+
+The existing mise-darwin update uses `latest` for gateway packages, so these
+verified Homebrew upgrades install the new patches without another version pin
+change. Its update commit is `1202e71c2abdb44453e1e217675be3a4fd6e834b`.
+The retired local directory, Homebrew binary, and Cellar compatibility alias are
+absent. Preexisting unrelated changes in Marketing and mise-darwin were retained.
