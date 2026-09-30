@@ -1,6 +1,7 @@
 import CryptoKit
 import Darwin
 import Foundation
+import GoogleGatewayAuth
 import Security
 
 public struct GoogleCalendarOAuthLoginOptions: Sendable {
@@ -26,6 +27,11 @@ struct GoogleCalendarOAuthBootstrapper {
     credential: CalendarCredentialConfig,
     options: GoogleCalendarOAuthLoginOptions = .default
   ) throws -> [String: Any] {
+    do { return try performLogin(credential: credential, options: options) }
+    catch let error as GatewayAuthError { throw authError(error.description) }
+  }
+
+  private func performLogin(credential: CalendarCredentialConfig, options: GoogleCalendarOAuthLoginOptions) throws -> [String: Any] {
     guard credential.tokenStoreJSON == nil else {
       throw calendarTokenSourceError(
         GoogleCalendarGatewayError("Inline token JSON is immutable", code: .invalidArgument, exitCode: .invalidCliUsage),
@@ -33,13 +39,31 @@ struct GoogleCalendarOAuthBootstrapper {
       )
     }
     let client = try loadGoogleOAuthClient(credential: credential, use: .desktopLogin)
-    let receiver = try LoopbackOAuthReceiver(redirectURI: options.redirectURI)
+    let clientData = try credential.oauthClientSecretJSON.map { Data($0.utf8) }
+      ?? Data(contentsOf: URL(fileURLWithPath: credential.oauthClientSecretPath))
+    let root = try JSONSerialization.jsonObject(with: clientData) as? [String: Any]
+    let kind = root?["installed"] == nil ? "web" : "installed"
+    let entry = root?[kind] as? [String: Any]
+    let registered = entry?["redirect_uris"] as? [String] ?? []
+    let shared: OAuthCallbackServer?
+    let receiver: LoopbackOAuthReceiver?
+    let redirectURI: String
+    if kind == "web" || OAuthCallbackSettings.isConfigured(prefix: "GOOGLE_CALENDAR_GATEWAY_") {
+      let settings = try OAuthCallbackSettings(prefix: "GOOGLE_CALENDAR_GATEWAY_", requestedURI: options.redirectURI
+        ?? (kind == "web" && !OAuthCallbackSettings.isConfigured(prefix: "GOOGLE_CALENDAR_GATEWAY_") ? registered.first : nil))
+      let server = try OAuthCallbackServer(settings: settings)
+      shared = server; receiver = nil; redirectURI = server.redirectURI.absoluteString
+    } else {
+      let local = try LoopbackOAuthReceiver(redirectURI: options.redirectURI)
+      receiver = local; shared = nil; redirectURI = local.redirectURI
+    }
+    try OAuthCallbackSettings.validateClientRedirect(kind: kind, registered: registered, redirect: redirectURI)
     let state = try randomURLSafeString(byteCount: 32)
     let codeVerifier = try randomURLSafeString(byteCount: 32)
     let authorizationURL = try buildAuthorizationURL(
       client: client,
       credential: credential,
-      redirectURI: receiver.redirectURI,
+      redirectURI: redirectURI,
       state: state,
       codeVerifier: codeVerifier
     )
@@ -49,12 +73,18 @@ struct GoogleCalendarOAuthBootstrapper {
     } else {
       FileHandle.standardError.write(Data(manualAuthorizationMessage(for: authorizationURL).utf8))
     }
-    let code = try receiver.waitForCode(expectedState: state, timeoutSeconds: Int32(options.timeoutSeconds))
+    let code: String
+    if let shared {
+      let callback = try shared.wait(expectedState: state, timeout: TimeInterval(options.timeoutSeconds))
+      guard callback.error == nil, let received = callback.code else { throw authError("OAuth authorization failed") }
+      code = received
+    } else if let receiver { code = try receiver.waitForCode(expectedState: state, timeoutSeconds: Int32(options.timeoutSeconds)) }
+    else { throw authError("OAuth callback listener missing") }
     let tokenResponse = try exchangeAuthorizationCode(
       client: client,
       code: code,
       codeVerifier: codeVerifier,
-      redirectURI: receiver.redirectURI
+      redirectURI: redirectURI
     )
     let tokenStore = buildTokenStore(credential: credential, tokenResponse: tokenResponse)
     try writeGoogleCalendarOAuthTokenStore(
@@ -69,7 +99,7 @@ struct GoogleCalendarOAuthBootstrapper {
       "provider": credential.provider.rawValue,
       "state": CalendarAuthState.ready.rawValue,
       "tokenStorePath": credential.tokenStorePath,
-      "redirectUri": receiver.redirectURI,
+      "redirectUri": redirectURI,
       "emailAddress": tokenStore.emailAddress as Any? ?? NSNull(),
       "expiresAt": tokenStore.expiresAt as Any? ?? NSNull(),
       "hasRefreshToken": tokenStore.refreshToken?.isEmpty == false

@@ -461,6 +461,7 @@ private func selectGoogleOAuthClient(
 ) throws -> (client: GoogleOAuthClient, source: GoogleOAuthClientSource) {
   switch use {
   case .desktopLogin:
+    if file.installed == nil, let web = file.web { return (web, .web) }
     guard let installed = file.installed else {
       throw GoogleCalendarGatewayError(
         "OAuth client JSON must contain an installed desktop client",
@@ -508,7 +509,7 @@ private func validateGoogleOAuthClient(
   if use == .desktopLogin, nonBlank(client.authURI) == nil {
     throw invalidOAuthClientError(credential: credential, use: use)
   }
-  if use == .tokenRefresh, source == .web, nonBlank(client.clientSecret) == nil {
+  if source == .web, nonBlank(client.clientSecret) == nil {
     throw invalidOAuthClientError(credential: credential, use: use)
   }
 }
