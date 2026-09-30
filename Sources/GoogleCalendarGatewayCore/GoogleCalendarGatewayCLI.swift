@@ -123,7 +123,7 @@ public struct GoogleCalendarGatewayCLI {
     pretty: Bool
   ) throws -> GoogleCalendarGatewayCommandResult {
     guard let credentialId = try getStringFlag(flags, "credential")
-      ?? (subcommand == "login" ? "google-personal" : nil) else {
+      ?? (["login", "status"].contains(subcommand ?? "") ? "google-personal" : nil) else {
       throw GoogleCalendarGatewayError(
         "auth commands require --credential",
         code: .invalidArgument,
@@ -212,7 +212,8 @@ private func rootHelpText(mode: GoogleCalendarGatewayCLIMode) -> String {
     graphql --query <query> [--variables <json>|--variables-file <path>]
     graphql --query-file <path> [--variables <json>|--variables-file <path>]
     config validate
-    auth <login|revoke|status> --credential <id>
+    auth <login|status> [--credential <id>]
+    auth revoke --credential <id>
     auth login [--credential <id>] [--redirect-uri <loopback-url>] [--open-browser false] [--timeout-seconds <seconds>]
     cache prune [--calendar <id>|--all]
   \(eventCommands)

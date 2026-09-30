@@ -87,6 +87,20 @@ import Testing
   #expect(fake["credentialId"] as? String == "google-personal")
 }
 
+@Test func authStatusDefaultsToTheLoginCredential() throws {
+  let paths = temporaryConfigPaths()
+  defer { try? FileManager.default.removeItem(atPath: paths.root) }
+  try writeConfig(paths: paths)
+  let cli = GoogleCalendarGatewayCLI()
+  let explicit = cli.run(arguments: ["--config", paths.config, "auth", "status", "--credential", "google-personal"], environment: env(paths: paths))
+  let implicit = cli.run(arguments: ["--config", paths.config, "auth", "status"], environment: env(paths: paths))
+  #expect(implicit.exitCode == 0)
+  #expect(implicit.stdout == explicit.stdout)
+  let revoke = cli.run(arguments: ["--config", paths.config, "auth", "revoke"], environment: env(paths: paths))
+  #expect(revoke.exitCode == 2)
+  #expect(revoke.stderr.contains("auth commands require --credential"))
+}
+
 @Test func authStatusDetectsScopeMismatch() throws {
   let paths = temporaryConfigPaths()
   defer {
