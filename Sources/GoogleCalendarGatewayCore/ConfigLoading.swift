@@ -76,7 +76,8 @@ public enum GoogleCalendarGatewayConfigLoader {
 
   public static func loadConfig(
     configPath: String? = nil,
-    environment sourceEnvironment: [String: String] = ProcessInfo.processInfo.environment
+    environment sourceEnvironment: [String: String] = ProcessInfo.processInfo.environment,
+    synthesizedAccessMode: CalendarAccessMode = .read
   ) throws -> GoogleCalendarGatewayConfig {
     let initialEnvironment = sourceEnvironment
     let explicitConfigPath = nonBlank(configPath) ?? nonBlank(initialEnvironment["GOOGLE_CALENDAR_GATEWAY_CONFIG"])
@@ -88,7 +89,7 @@ public enum GoogleCalendarGatewayConfigLoader {
     } catch {
       if usesImplicitDefaultConfig,
          !FileManager.default.fileExists(atPath: selectedConfigPath) {
-        return try defaultConfig(configPath: selectedConfigPath, environment: calendarCredentialEnvironment(initialEnvironment))
+        return try defaultConfig(configPath: selectedConfigPath, environment: calendarCredentialEnvironment(initialEnvironment), accessMode: synthesizedAccessMode)
       }
       throw configError(
         "Failed to read config: \(selectedConfigPath)",
@@ -165,12 +166,13 @@ public enum GoogleCalendarGatewayConfigLoader {
 
   private static func defaultConfig(
     configPath: String,
-    environment: [String: String]
+    environment: [String: String],
+    accessMode: CalendarAccessMode
   ) throws -> GoogleCalendarGatewayConfig {
     let credential = CalendarCredentialConfig(
       id: defaultCredentialId,
       provider: .google,
-      accessMode: .read,
+      accessMode: accessMode,
       oauthClientSecretPath: try resolveCredentialPath(CredentialPathRequest(
         configPath: configPath,
         credentialId: defaultCredentialId,
@@ -189,7 +191,7 @@ public enum GoogleCalendarGatewayConfigLoader {
         credentialId: defaultCredentialId,
         pathKey: "token_store_path",
         configValue: URL(fileURLWithPath: resolveDefaultCredentialDirectory(environment: environment))
-          .appendingPathComponent("\(defaultCredentialId).json")
+          .appendingPathComponent(accessMode == .read ? "\(defaultCredentialId).json" : "\(defaultCredentialId)-\(accessMode.rawValue.replacingOccurrences(of: "_", with: "-")).json")
           .path,
         environment: environment,
         context: "credentials.\(defaultCredentialId).token_store_path"
@@ -206,7 +208,8 @@ public enum GoogleCalendarGatewayConfigLoader {
     // Only the historical synthesized default is migrated. Configured paths,
     // per-credential environment paths, inline JSON, and credential-directory
     // overrides intentionally retain their selected source without migration.
-    if credential.tokenStoreJSON == nil,
+    if accessMode == .read,
+       credential.tokenStoreJSON == nil,
        !credential.tokenStorePathFromEnvironment,
        nonBlank(environment["GOOGLE_CALENDAR_GATEWAY_CREDENTIAL_DIR"]) == nil {
       let legacyPath = URL(fileURLWithPath: configPath)

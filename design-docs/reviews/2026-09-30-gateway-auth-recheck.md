@@ -20,6 +20,17 @@ credential environment variables removed.
 - A Gmail SDK cancellation test sometimes checked before URLSession delivered
   the provider stop callback. It now waits at most one second for that callback
   and retains the assertion that the provider request was stopped.
+- Service lacked `auth status` and common lifecycle aliases. Its shared auth
+  adapter now reports local external/vault credential status without network
+  calls or token disclosure and accepts `auth refresh` and `auth revoke` while
+  retaining explicit profile selection for those lifecycle operations.
+- Calendar's fresh writer incorrectly synthesized the reader's access mode and
+  token path. It now synthesizes `read_write` and uses
+  `google-personal-read-write.json`; explicit configurations retain their own
+  policy, and historical reader credential migration remains reader-only.
+- Executable checks with an opaque fixture token confirm that local auth status
+  succeeds without an application client in all 28 commands and never prints
+  the token. These checks do not verify that Google accepts the fixture token.
 
 ## Verification boundaries
 

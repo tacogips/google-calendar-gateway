@@ -47,6 +47,11 @@ The rename also changes the default XDG directories and environment prefix to
 config paths and credential files can still be selected with the new commands.
 The reader rejects mutations, including dry runs, even with a write enabled credential.
 The writer still requires `access_mode = "read_write"` or `"full"` for writes.
+Without an existing configuration, the reader synthesizes a `read` profile and
+the writer synthesizes a `read_write` profile. Their default token files are
+`google-personal.json` and `google-personal-read-write.json` respectively, so
+writer login does not replace the reader credential. Existing configuration
+and explicit credential overrides keep their selected access mode and paths.
 OAuth login requests the scopes configured for the selected credential.
 Use `access_mode = "read"` for a credential that needs only reads.
 `GoogleCalendarGatewayCLI` defaults to reader mode; select `.writer` explicitly for writes.

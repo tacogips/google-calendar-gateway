@@ -64,7 +64,7 @@ public struct GoogleCalendarGatewayCLI {
     case "graphql":
       try validateAllowedFlags(parsed.flags, commandFlags: ["query", "query-file", "variables", "variables-file"])
       try validatePositionalCount(parsed.positionals, count: 1)
-      let config = try GoogleCalendarGatewayConfigLoader.loadConfig(configPath: configPath, environment: environment)
+      let config = try GoogleCalendarGatewayConfigLoader.loadConfig(configPath: configPath, environment: environment, synthesizedAccessMode: mode.synthesizedAccessMode)
       let query = try loadQuery(flags: parsed.flags)
       _ = try loadVariables(flags: parsed.flags)
       let result = try executeCalendarGraphQL(service: serviceFactory(config), query: query, mode: mode)
@@ -133,12 +133,12 @@ public struct GoogleCalendarGatewayCLI {
     switch subcommand {
     case "status":
       let service = GoogleCalendarGatewayService(
-        config: try GoogleCalendarGatewayConfigLoader.loadConfig(configPath: configPath, environment: environment)
+        config: try GoogleCalendarGatewayConfigLoader.loadConfig(configPath: configPath, environment: environment, synthesizedAccessMode: mode.synthesizedAccessMode)
       )
       return success(try service.getAuthStatus(credentialId: credentialId), pretty: pretty)
     case "revoke":
       let service = GoogleCalendarGatewayService(
-        config: try GoogleCalendarGatewayConfigLoader.loadConfig(configPath: configPath, environment: environment)
+        config: try GoogleCalendarGatewayConfigLoader.loadConfig(configPath: configPath, environment: environment, synthesizedAccessMode: mode.synthesizedAccessMode)
       )
       return success(try service.revokeAuth(credentialId: credentialId), pretty: pretty)
     case "login":
@@ -148,7 +148,7 @@ public struct GoogleCalendarGatewayCLI {
         timeoutSeconds: try getIntFlag(flags, "timeout-seconds", defaultValue: 300, range: 1...3_600)
       )
       let service = GoogleCalendarGatewayService(
-        config: try GoogleCalendarGatewayConfigLoader.loadConfig(configPath: configPath, environment: environment)
+        config: try GoogleCalendarGatewayConfigLoader.loadConfig(configPath: configPath, environment: environment, synthesizedAccessMode: mode.synthesizedAccessMode)
       )
       return success(try service.login(credentialId: credentialId, options: options), pretty: pretty)
     default:
@@ -175,7 +175,7 @@ public struct GoogleCalendarGatewayCLI {
       )
     }
     let service = GoogleCalendarGatewayService(
-      config: try GoogleCalendarGatewayConfigLoader.loadConfig(configPath: configPath, environment: environment)
+      config: try GoogleCalendarGatewayConfigLoader.loadConfig(configPath: configPath, environment: environment, synthesizedAccessMode: mode.synthesizedAccessMode)
     )
     return success(
       try service.pruneCache(

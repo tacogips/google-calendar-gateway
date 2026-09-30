@@ -2,6 +2,10 @@ public enum GoogleCalendarGatewayCLIMode: Sendable {
   case reader
   case writer
 
+  var synthesizedAccessMode: CalendarAccessMode {
+    self == .writer ? .readWrite : .read
+  }
+
   var executableName: String {
     switch self {
     case .reader: return "google-calendar-gateway-reader"

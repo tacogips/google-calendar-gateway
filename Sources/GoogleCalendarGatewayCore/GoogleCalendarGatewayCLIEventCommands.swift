@@ -9,7 +9,7 @@ extension GoogleCalendarGatewayCLI {
     pretty: Bool
   ) throws -> GoogleCalendarGatewayCommandResult {
     let request = try eventCommandRequest(subcommand: subcommand, flags: flags)
-    let config = try GoogleCalendarGatewayConfigLoader.loadConfig(configPath: configPath, environment: environment)
+    let config = try GoogleCalendarGatewayConfigLoader.loadConfig(configPath: configPath, environment: environment, synthesizedAccessMode: mode.synthesizedAccessMode)
     let service = serviceFactory(config)
     let result: CalendarEventMutationResult
     switch request {
