@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import CalendarGatewayCore
+@testable import GoogleCalendarGatewayCore
 
 @Test func authRevokeReportsProviderAndLocalDeletionOutcomes() throws {
   let paths = temporaryConfigPaths()
@@ -9,8 +9,8 @@ import Testing
   }
   try writeConfig(paths: paths)
   var revokedToken: String?
-  let config = try CalendarGatewayConfigLoader.loadConfig(configPath: paths.config, environment: env(paths: paths))
-  let service = CalendarGatewayService(config: config)
+  let config = try GoogleCalendarGatewayConfigLoader.loadConfig(configPath: paths.config, environment: env(paths: paths))
+  let service = GoogleCalendarGatewayService(config: config)
 
   let result = try service.revokeAuth(credentialId: "google-personal") { token in
     revokedToken = token
@@ -25,9 +25,9 @@ import Testing
 }
 
 @Test func authRevokeDoesNotDeleteEnvironmentSuppliedTokenStores() throws {
-  let config = CalendarGatewayConfig(
-    configPath: "/tmp/calendar-gateway-test.toml",
-    storage: CalendarStorageConfig(cacheDir: "/tmp/calendar-gateway-cache"),
+  let config = GoogleCalendarGatewayConfig(
+    configPath: "/tmp/google-calendar-gateway-test.toml",
+    storage: CalendarStorageConfig(cacheDir: "/tmp/google-calendar-gateway-cache"),
     credentials: [
       testCredential(tokenStoreJSON: """
       {"accessMode":"read","accessToken":"access","refreshToken":"refresh","expiresAt":"2099-01-01T00:00:00Z"}
@@ -35,7 +35,7 @@ import Testing
     ],
     accounts: testConfig().accounts
   )
-  let service = CalendarGatewayService(config: config)
+  let service = GoogleCalendarGatewayService(config: config)
   var revokedToken: String?
 
   let result = try service.revokeAuth(credentialId: "google-personal") { token in
@@ -55,11 +55,11 @@ import Testing
     try? FileManager.default.removeItem(atPath: paths.root)
   }
   try writeConfig(paths: paths)
-  let config = try CalendarGatewayConfigLoader.loadConfig(configPath: paths.config, environment: env(paths: paths))
-  let service = CalendarGatewayService(config: config)
+  let config = try GoogleCalendarGatewayConfigLoader.loadConfig(configPath: paths.config, environment: env(paths: paths))
+  let service = GoogleCalendarGatewayService(config: config)
 
   let result = try service.revokeAuth(credentialId: "google-personal") { _ in
-    throw CalendarGatewayError("revocation unavailable", code: .providerApiError, exitCode: .providerApiError)
+    throw GoogleCalendarGatewayError("revocation unavailable", code: .providerApiError, exitCode: .providerApiError)
   }
 
   #expect(result["providerRevocationAttempted"] as? Bool == true)

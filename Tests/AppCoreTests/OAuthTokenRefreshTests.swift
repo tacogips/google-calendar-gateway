@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import CalendarGatewayCore
+@testable import GoogleCalendarGatewayCore
 
 @Test func tokenRefreshPersistsRotatedRefreshToken() throws {
   let paths = temporaryConfigPaths()
@@ -17,7 +17,7 @@ import Testing
   try """
   {"accessMode":"read","accessToken":"old-access","refreshToken":"old-refresh","expiresAt":"2000-01-01T00:00:00Z","scope":"https://www.googleapis.com/auth/calendar.events.readonly https://www.googleapis.com/auth/calendar.calendarlist.readonly https://www.googleapis.com/auth/calendar.freebusy"}
   """.write(toFile: paths.token, atomically: true, encoding: .utf8)
-  let config = try CalendarGatewayConfigLoader.loadConfig(configPath: paths.config, environment: env(paths: paths))
+  let config = try GoogleCalendarGatewayConfigLoader.loadConfig(configPath: paths.config, environment: env(paths: paths))
   let credential = try #require(config.credentials.first)
 
   let accessToken = try validGoogleCalendarAccessToken(credential: credential, use: .read)

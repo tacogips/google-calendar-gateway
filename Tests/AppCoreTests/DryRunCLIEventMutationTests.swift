@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import CalendarGatewayCore
+@testable import GoogleCalendarGatewayCore
 
 @Suite("DryRun CLI Event Mutations")
 struct DryRunCLIEventMutationTests {
@@ -10,7 +10,7 @@ struct DryRunCLIEventMutationTests {
     defer { try? FileManager.default.removeItem(atPath: paths.root) }
     try writeConfig(paths: paths, accessMode: "read_write")
     let provider = RecordingCalendarProvider()
-    let cli = CalendarGatewayCLI { CalendarGatewayService(config: $0, provider: provider) }
+    let cli = GoogleCalendarGatewayCLI(mode: .writer) { GoogleCalendarGatewayService(config: $0, provider: provider) }
 
     let create = cli.run(arguments: [
       "event", "create", "--config", paths.config, "--calendar", "personal",
@@ -46,7 +46,7 @@ struct DryRunCLIEventMutationTests {
     defer { try? FileManager.default.removeItem(atPath: paths.root) }
     try writeConfig(paths: paths, accessMode: "read_write")
     let provider = RecordingCalendarProvider()
-    let cli = CalendarGatewayCLI { CalendarGatewayService(config: $0, provider: provider) }
+    let cli = GoogleCalendarGatewayCLI(mode: .writer) { GoogleCalendarGatewayService(config: $0, provider: provider) }
 
     let create = cli.run(arguments: [
       "event", "create", "--config", paths.config, "--calendar", "personal",
@@ -67,9 +67,9 @@ struct DryRunCLIEventMutationTests {
     defer { try? FileManager.default.removeItem(atPath: paths.root) }
     try writeConfig(paths: paths, accessMode: "read_write")
     var factoryCalls = 0
-    let cli = CalendarGatewayCLI {
+    let cli = GoogleCalendarGatewayCLI(mode: .writer) {
       factoryCalls += 1
-      return CalendarGatewayService(config: $0, provider: RecordingCalendarProvider())
+      return GoogleCalendarGatewayService(config: $0, provider: RecordingCalendarProvider())
     }
     let requests = [
       ["event", "create", "--config", paths.config, "--calendar", "personal", "--attendee-emails", "not-json"],
@@ -85,7 +85,7 @@ struct DryRunCLIEventMutationTests {
     ]
     for request in requests {
       let result = cli.run(arguments: request, environment: env(paths: paths))
-      #expect(result.exitCode == CalendarGatewayExitCode.invalidCliUsage.rawValue)
+      #expect(result.exitCode == GoogleCalendarGatewayExitCode.invalidCliUsage.rawValue)
       #expect(result.stdout.isEmpty)
       #expect(result.stderr.contains("INVALID_ARGUMENT"))
     }
@@ -98,11 +98,11 @@ struct DryRunCLIEventMutationTests {
     defer { try? FileManager.default.removeItem(atPath: paths.root) }
     try writeConfig(paths: paths, accessMode: "read")
     let provider = RecordingCalendarProvider()
-    let cli = CalendarGatewayCLI { CalendarGatewayService(config: $0, provider: provider) }
+    let cli = GoogleCalendarGatewayCLI(mode: .writer) { GoogleCalendarGatewayService(config: $0, provider: provider) }
     let result = cli.run(arguments: [
       "event", "delete", "--config", paths.config, "--calendar", "personal", "--event-id", "event-1", "--dry-run"
     ], environment: env(paths: paths))
-    #expect(result.exitCode == CalendarGatewayExitCode.graphqlExecutionError.rawValue)
+    #expect(result.exitCode == GoogleCalendarGatewayExitCode.graphqlExecutionError.rawValue)
     #expect(result.stderr.contains("WRITE_DISABLED"))
     #expect(provider.deleteCalls.isEmpty)
   }

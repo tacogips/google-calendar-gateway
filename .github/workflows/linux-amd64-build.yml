@@ -32,4 +32,4 @@ jobs:
             abort("Package.swift must declare platforms: [.macOS(.v14)]") unless manifest.match?(expected)
           '
           grep -q 'macOS-only' design-docs/specs/architecture.md
-          echo "calendar-gateway is intentionally scoped to macOS until OAuth bootstrap portability lands."
+          echo "google-calendar-gateway is intentionally scoped to macOS until OAuth bootstrap portability lands."

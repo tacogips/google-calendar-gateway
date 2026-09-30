@@ -1,6 +1,6 @@
 import Foundation
 
-public extension CalendarGatewayService {
+public extension GoogleCalendarGatewayService {
   func pruneCache(calendarId: String?, all: Bool) throws -> [String: Any] {
     let cacheRoot = canonicalPath(config.storage.cacheDir)
     let targets: [String]
@@ -11,13 +11,13 @@ public extension CalendarGatewayService {
       let account = try requireAccount(calendarId)
       targets = [URL(fileURLWithPath: cacheRoot).appendingPathComponent(account.id, isDirectory: true).path]
     case (false, nil):
-      throw CalendarGatewayError(
+      throw GoogleCalendarGatewayError(
         "cache prune requires --all or --calendar",
         code: .invalidArgument,
         exitCode: .invalidCliUsage
       )
     case (true, .some):
-      throw CalendarGatewayError(
+      throw GoogleCalendarGatewayError(
         "cache prune accepts either --all or --calendar, but not both",
         code: .invalidArgument,
         exitCode: .invalidCliUsage
@@ -33,7 +33,7 @@ public extension CalendarGatewayService {
       do {
         try FileManager.default.removeItem(atPath: normalizedTarget)
       } catch {
-        throw CalendarGatewayError(
+        throw GoogleCalendarGatewayError(
           "Failed to prune cache path",
           code: .configInvalid,
           exitCode: .configurationError,
@@ -52,7 +52,7 @@ public extension CalendarGatewayService {
     let cacheRoot = canonicalPath(config.storage.cacheDir)
     let normalizedTarget = canonicalPath(target)
     if !isWithinRoot(rootPath: cacheRoot, candidatePath: normalizedTarget) {
-      throw CalendarGatewayError(
+      throw GoogleCalendarGatewayError(
         "Refusing to prune outside the configured cache root",
         code: .configInvalid,
         exitCode: .configurationError,

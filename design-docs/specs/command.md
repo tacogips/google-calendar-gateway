@@ -7,31 +7,31 @@ Draft
 ## Current CLI
 
 ```bash
-calendar-gateway [--config <path>] [--pretty] <command>
+google-calendar-gateway-reader [--config <path>] [--pretty] <command>
 ```
 
 Implemented commands:
 
-- `calendar-gateway --help`
-- `calendar-gateway help`
-- `calendar-gateway --version`
-- `calendar-gateway config validate`
-- `calendar-gateway auth status --credential <id>`
-- `calendar-gateway auth revoke --credential <id>`
-- `calendar-gateway auth login --credential <id>`
-- `calendar-gateway cache prune --calendar <id>`
-- `calendar-gateway cache prune --all`
-- `calendar-gateway graphql --query <query> [--variables <json>|--variables-file <path>]`
-- `calendar-gateway graphql --query-file <path> [--variables <json>|--variables-file <path>]`
+- `google-calendar-gateway-reader --help`
+- `google-calendar-gateway help`
+- `google-calendar-gateway-reader --version`
+- `google-calendar-gateway-reader config validate`
+- `google-calendar-gateway-reader auth status --credential <id>`
+- `google-calendar-gateway-reader auth revoke --credential <id>`
+- `google-calendar-gateway-reader auth login [--credential <id>]`
+- `google-calendar-gateway-reader cache prune --calendar <id>`
+- `google-calendar-gateway-reader cache prune --all`
+- `google-calendar-gateway-reader graphql --query <query> [--variables <json>|--variables-file <path>]`
+- `google-calendar-gateway-reader graphql --query-file <path> [--variables <json>|--variables-file <path>]`
 
 Selected event-mutation command addition for issue-resolution workflow issue
 `codex-design-and-implement-review-loop-session-600/comm-001238`:
 
-- `calendar-gateway event create --calendar <id> [event input flags] [--dry-run]`
-- `calendar-gateway event update --calendar <id> --event-id <id> [event input flags] [--dry-run]`
-- `calendar-gateway event delete --calendar <id> --event-id <id> [--provider-calendar <id>] [--send-updates <value>] [--dry-run]`
+- `google-calendar-gateway-writer event create --calendar <id> [event input flags] [--dry-run]`
+- `google-calendar-gateway-writer event update --calendar <id> --event-id <id> [event input flags] [--dry-run]`
+- `google-calendar-gateway-writer event delete --calendar <id> --event-id <id> [--provider-calendar <id>] [--send-updates <value>] [--dry-run]`
 
-These commands are thin adapters over `CalendarGatewayService`; they do not own
+These commands are thin adapters over `GoogleCalendarGatewayService`; they do not own
 separate validation, preview, or provider logic. Create and update event input
 flags map to the canonical GraphQL/service input using kebab-case names, with
 collection values encoded as typed JSON arrays. Boolean event flags accept a
@@ -42,7 +42,7 @@ element schemas, examples, defaults, and invalid-value behavior are defined in
 The CLI writes business payloads as JSON on stdout and structured errors as
 JSON on stderr. `auth login` runs Google installed-app OAuth for desktop client
 JSON. Token stores can also be supplied through the config file or
-`CALENDAR_GATEWAY_CREDENTIAL_<ID>_TOKEN_STORE_JSON`.
+`GOOGLE_CALENDAR_GATEWAY_CREDENTIAL_<ID>_TOKEN_STORE_JSON`.
 Unknown flags are rejected with `INVALID_ARGUMENT` and exit code 2 before
 loading config or contacting providers.
 Unexpected positional arguments are rejected the same way, before config loading

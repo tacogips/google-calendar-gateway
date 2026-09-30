@@ -43,12 +43,12 @@ Severity legend:
 
 ### 1.1 Linux CI build is broken (High)
 
-`.github/workflows/linux-amd64-build.yml` builds the `calendar-gateway`
+`.github/workflows/linux-amd64-build.yml` builds the `google-calendar-gateway`
 product with `--triple x86_64-unknown-linux-gnu`, and the run on `main`
 (`28557202123`) fails:
 
 ```
-Sources/CalendarGatewayCore/GoogleCalendarOAuthBootstrap.swift:1:8:
+Sources/GoogleCalendarGatewayCore/GoogleCalendarOAuthBootstrap.swift:1:8:
 error: no such module 'CryptoKit'
 ```
 
@@ -109,7 +109,7 @@ Consequence: a token whose granted mode is broader than the configured mode
 reports `READY` in `auth status` but every actual API call fails with
 "Stored Google Calendar token scope does not match configured access mode".
 
-This also contradicts `design-docs/specs/calendar-gateway.md` ("The broader
+This also contradicts `design-docs/specs/google-calendar-gateway.md` ("The broader
 `calendar.readonly` and `calendar` scopes are accepted when already present in
 token metadata for compatible configured modes"). The live path should use the
 same coverage relation as `inspectCalendarTokenStore` (or both should be a
@@ -117,7 +117,7 @@ single shared function so they cannot drift again).
 
 ### 2.2 Multiple root fields are silently dropped (High)
 
-`executeCalendarGraphQLData` (`CalendarGatewayGraphQL.swift:36-156`)
+`executeCalendarGraphQLData` (`GoogleCalendarGatewayGraphQL.swift:36-156`)
 dispatches on the **first** matching root field, in a hard-coded priority
 order (`calendarAPI`, `createEvent`, `updateEvent`, `deleteEvent`,
 `calendars`, `accounts`, ...). A legal GraphQL document such as:
@@ -140,7 +140,7 @@ deviation worth an explicit note; see 8.2).
 
 ### 2.3 RFC 3339 validation rejects fractional seconds (High)
 
-`isRFC3339DateTime` (`CalendarGatewayUtilities.swift:100`) uses a default
+`isRFC3339DateTime` (`GoogleCalendarGatewayUtilities.swift:100`) uses a default
 `ISO8601DateFormatter`, which does **not** accept fractional seconds. RFC 3339
 explicitly allows them, and — critically — Google Calendar emits them:
 `event.updated` is `2026-07-01T09:00:00.000Z`. The documented incremental-sync
@@ -155,7 +155,7 @@ event mutation datetimes, so the fix pays off everywhere.
 
 ### 2.4 Argument lookup matches names inside string values (Medium)
 
-`argumentValueRange` (`CalendarGatewayGraphQL.swift:678-751`) scans the raw
+`argumentValueRange` (`GoogleCalendarGatewayGraphQL.swift:678-751`) scans the raw
 argument substring for the identifier without string-literal awareness. A
 mutation like:
 
@@ -175,7 +175,7 @@ does.
 
 ### 2.5 `rangeOfField` corrupts depth counters on braces in strings (Medium)
 
-`rangeOfField` (`CalendarGatewayGraphQL.swift:463-493`) counts `{}`/`()`
+`rangeOfField` (`GoogleCalendarGatewayGraphQL.swift:463-493`) counts `{}`/`()`
 without tracking string literals, unlike its sibling
 `indexAfterBalancedDelimiter` which does. Any argument value containing an
 unbalanced `{`, `}`, `(`, or `)` — e.g. `summary: "1) kickoff"` or
@@ -186,9 +186,9 @@ descriptions are arbitrary user text, so this is reachable in normal use.
 
 ### 2.6 `cache prune` containment check is bypassable; IDs are unvalidated (Medium)
 
-`isWithinRoot` (`CalendarGatewayUtilities.swift:15`) is a string-prefix check
+`isWithinRoot` (`GoogleCalendarGatewayUtilities.swift:15`) is a string-prefix check
 and `normalizedPath` only expands `~` — it does not resolve `..` or symlinks.
-`pruneCache` (`CalendarGatewayCore.swift:517-560`) builds the target as
+`pruneCache` (`GoogleCalendarGatewayCore.swift:517-560`) builds the target as
 `cacheRoot + "/" + account.id`. An account ID like `../../precious` yields
 `/cache/root/../../precious`, which passes `hasPrefix("/cache/root/")`, and
 `FileManager.removeItem` then resolves `..` and deletes **outside** the cache
@@ -203,7 +203,7 @@ and currently does not. Two fixes reinforce each other:
 - validate `credentials.id` / `calendars.id` charset at config load
   (e.g. `[A-Za-z0-9._-]+`). This also fixes the env-var mapping collision
   where `google-personal` and `google_personal` resolve to the same
-  `CALENDAR_GATEWAY_CREDENTIAL_GOOGLE_PERSONAL_*` variables
+  `GOOGLE_CALENDAR_GATEWAY_CREDENTIAL_GOOGLE_PERSONAL_*` variables
   (`ConfigLoading.swift:196-204`), and keeps IDs safe for URL path embedding.
 
 ### 2.7 Token refresh drops rotated refresh tokens (Medium)
@@ -216,7 +216,7 @@ discarded and the stored one eventually dies, forcing a re-login that a
 one-line fix would have avoided.
 
 Related: there is no locking around read-modify-write of the token store.
-Two concurrent `calendar-gateway` invocations that both refresh will race;
+Two concurrent `google-calendar-gateway` invocations that both refresh will race;
 the atomic write prevents corruption but not lost updates. A simple `flock`
 on the token file (or accept-and-document the risk) is worth a decision.
 
@@ -231,7 +231,7 @@ When no config file exists and none was requested explicitly,
 122-174`) with credential `google-personal`, account `personal`, and email
 `personal@example.invalid`. Consequences:
 
-- `calendar-gateway config validate` with **no config file at all** prints
+- `google-calendar-gateway config validate` with **no config file at all** prints
   `{"ok": true, ...}` — the command's core promise ("validate my config") is
   inverted.
 - The default path skips `validateOAuthClientSecretPaths`, so the parse path
@@ -241,12 +241,12 @@ When no config file exists and none was requested explicitly,
 
 At minimum `config validate` should report `"configFileExists": false` /
 `"usingDefaults": true`; arguably it should fail. The spec
-(`calendar-gateway.md` Configuration section) never mentions an implicit
+(`google-calendar-gateway.md` Configuration section) never mentions an implicit
 default config, so this behavior is also undocumented.
 
 ### 3.2 `calendarAPI` read-access override defeats the write gate (Medium)
 
-Spec (`calendar-gateway.md`): "Read-only credentials must fail before provider
+Spec (`google-calendar-gateway.md`): "Read-only credentials must fail before provider
 mutation with a machine-readable error such as `WRITE_DISABLED`."
 
 `rawCalendarAPITokenUse` (`CalendarRawAPI.swift:97-109`) honors a caller-
@@ -260,7 +260,7 @@ the `access` hint for gating (the hint can still choose the token scope).
 
 ### 3.3 Error envelope inconsistency in `graphql` (Medium)
 
-`executeCalendarGraphQL` (`CalendarGatewayGraphQL.swift:16`) converts only
+`executeCalendarGraphQL` (`GoogleCalendarGatewayGraphQL.swift:16`) converts only
 errors whose exit code is `graphqlExecutionError` or `providerApiError` into
 the GraphQL `errors` array. Errors carrying other exit codes escape to CLI
 stderr:
@@ -280,7 +280,7 @@ funnel all resolver errors through it.
 
 ### 3.4 `--variables` is accepted and ignored (Medium)
 
-`CalendarGatewayCLI.swift:58` runs `_ = try loadVariables(...)`. The spec
+`GoogleCalendarGatewayCLI.swift:58` runs `_ = try loadVariables(...)`. The spec
 frames this as transport compatibility, but the observable behavior is a
 silent no-op: a caller passing `--variables '{"id":"x"}'` with `$id` in the
 query gets an unrelated parse error ("must be a string literal") rather than
@@ -305,7 +305,7 @@ The silent `try?` should become a real error either way.
 Spec: "pagination uses provider tokens wrapped in opaque cursors."
 `CalendarEventConnection.graphQLObject` (`CalendarModels.swift:508-517`)
 exposes both `nextCursor` *and* raw `nextPageToken`, and the `events` field
-accepts a raw `pageToken` argument (`CalendarGatewayGraphQL.swift:370-375`).
+accepts a raw `pageToken` argument (`GoogleCalendarGatewayGraphQL.swift:370-375`).
 If the raw token is a deliberate escape hatch, the spec should say so;
 otherwise drop it. Also worth documenting: Google requires the non-token query
 parameters to be identical across pages, and the cursor only carries the
@@ -314,12 +314,12 @@ pageToken — callers must re-supply all other arguments themselves.
 ### 3.7 Undocumented root fields and vocabulary split (Low)
 
 - `accounts` and `account` root fields exist
-  (`CalendarGatewayGraphQL.swift:79, 90`) but `command.md` documents only
+  (`GoogleCalendarGatewayGraphQL.swift:79, 90`) but `command.md` documents only
   `calendars`/`calendar`.
 - The same concept is `[[calendars]]` in TOML, `CalendarAccountConfig` in
   code, `accountId`-or-`calendarId` in GraphQL arguments, and
   `--calendar` on the CLI. The dual `accountId`/`calendarId` acceptance in
-  every event field (`CalendarGatewayGraphQL.swift:62-63, 115-116, 138-139,
+  every event field (`GoogleCalendarGatewayGraphQL.swift:62-63, 115-116, 138-139,
   274-275, 306-307`) doubles the parser surface and the documentation burden.
   Pick one public term (the spec's own "configured local calendar handle"
   suggests `calendarId` + `providerCalendarId`) and keep the alias only as a
@@ -338,7 +338,7 @@ newlines.
 
 ### 4.1 `auth revoke` does not revoke (Medium)
 
-`revokeAuth` (`CalendarGatewayCore.swift:499-515`) removes the token-store
+`revokeAuth` (`GoogleCalendarGatewayCore.swift:499-515`) removes the token-store
 file and reports `revoked: true`. The access/refresh tokens remain valid at
 Google until they expire naturally. A user who runs `auth revoke` after a
 machine compromise is not protected. Call
@@ -362,7 +362,7 @@ requests with 404 and keep waiting.
 `performGoogleCalendarHTTPRequest` (`GoogleCalendarOAuthSupport.swift:265`)
 bridges `URLSession` with a `DispatchSemaphore`. Acceptable for a one-shot
 CLI, but this is also the advertised **library** surface
-(`CalendarGatewayClient`): callers on Swift concurrency get a thread-blocking
+(`GoogleCalendarGatewayClient`): callers on Swift concurrency get a thread-blocking
 sync API, no cancellation, no retry/backoff for 429/5xx (the gateway maps 429
 to `PROVIDER_RATE_LIMITED` but never retries), and a hardcoded 30 s timeout.
 When the library API stabilizes, add `async` variants on the provider protocol
@@ -384,7 +384,7 @@ with generic errors:
 - booleans/integers, multi-line arrays, dotted keys, `[storage.sub]` → errors.
 
 Either adopt a real TOML parser dependency, or document the exact accepted
-grammar in `calendar-gateway.md` (currently it just says "config.toml") and
+grammar in `google-calendar-gateway.md` (currently it just says "config.toml") and
 make the error message name the limitation ("trailing comments are not
 supported") instead of echoing the line.
 
@@ -402,7 +402,7 @@ supported") instead of echoing the line.
 
 ## 6. Library API Shape (Improvements)
 
-- `CalendarGatewayService` mixes typed and untyped returns: `getEvent` returns
+- `GoogleCalendarGatewayService` mixes typed and untyped returns: `getEvent` returns
   `Any`, `createEvent`/`updateEvent` return `Any`, `deleteEvent` returns
   `[String: Any]`, while `searchEvents`/`calendarEvent` return typed models.
   The typed/`graphQLObject` split is good; the `Any`-returning wrappers should
@@ -413,23 +413,23 @@ supported") instead of echoing the line.
   into providers (each fake re-invents the payload shape). Return typed
   results and build JSON at the boundary.
 - `validateMaxResults` logic exists twice with two different error messages
-  (`CalendarGatewayCore.swift:663-674` and
-  `CalendarGatewayGraphQL.swift:377-389`). Same for RFC 3339 checks. Single
+  (`GoogleCalendarGatewayCore.swift:663-674` and
+  `GoogleCalendarGatewayGraphQL.swift:377-389`). Same for RFC 3339 checks. Single
   source per rule prevents drift.
 - Update semantics gaps worth documenting (or fixing): `updateEvent` cannot
   clear a field (empty strings are filtered by `nonBlank`), `attendeeEmails`
   fully replaces the attendee list on patch, and `createConference: false`
   cannot remove existing conference data. Agents will hit all three.
-- `Version.current = "0.1.0"` (`CalendarGatewayCore.swift:647`) duplicates the
+- `Version.current = "0.1.0"` (`GoogleCalendarGatewayCore.swift:647`) duplicates the
   `VERSION` file; release automation reads one, `--version` prints the other.
   Generate one from the other at build/release time.
 - Projection: when a root field has **no** selection set
   (`{ calendars }`), `projectGraphQLValue` returns the entire object including
-  raw `provider` metadata (`CalendarGatewayGraphQL.swift:198-210`), which the
+  raw `provider` metadata (`GoogleCalendarGatewayGraphQL.swift:198-210`), which the
   spec says should only appear when explicitly selected. Require a selection
   set for object-valued fields, or strip `provider` when unselected.
 - GraphQL error `extensions` drop `error.details`
-  (`CalendarGatewayGraphQL.swift:17-20`), losing e.g. `httpStatus` that the
+  (`GoogleCalendarGatewayGraphQL.swift:17-20`), losing e.g. `httpStatus` that the
   stderr path preserves. Include details in extensions.
 
 ---
@@ -461,7 +461,7 @@ injected-provider pattern. Gaps:
 
 ## 8. Documentation Gaps
 
-1. **Exit codes are not enumerated anywhere.** `CalendarGatewayExitCode`
+1. **Exit codes are not enumerated anywhere.** `GoogleCalendarGatewayExitCode`
    defines 0–6 with clear meanings; `command.md` mentions only exit 2 in
    passing. Add a table (spec promises "clear exit codes").
 2. **Operation-type behavior**: document that the lightweight executor ignores
@@ -469,10 +469,10 @@ injected-provider pattern. Gaps:
    per 2.2).
 3. **Default-config fallback** (3.1) is entirely undocumented.
 4. **gitleaks workflow** double-runs on PRs (`on: push` + `on: pull_request`).
-5. `impl-plans/active/calendar-gateway-core.md` describes work that has
+5. `impl-plans/active/google-calendar-gateway-core.md` describes work that has
    shipped; per the impl-plans process it should move to
    `impl-plans/completed/` with a completion note.
-6. `AGENTS.md` caps Swift files at 1000 lines; `CalendarGatewayCore.swift` is
+6. `AGENTS.md` caps Swift files at 1000 lines; `GoogleCalendarGatewayCore.swift` is
    at 992 and will cross on the next feature. Plan the split now (service vs.
    validation functions is the natural seam).
 

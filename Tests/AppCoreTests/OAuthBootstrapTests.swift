@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import CalendarGatewayCore
+@testable import GoogleCalendarGatewayCore
 
 @Test func loopbackRedirectAcceptsLocalhostAndCallbackPath() throws {
   let redirect = try GoogleCalendarLoopbackRedirectURI("http://localhost:8765/callback")
@@ -11,7 +11,7 @@ import Testing
 }
 
 @Test func loopbackRedirectRejectsNonLocalHosts() throws {
-  let error = try requireCalendarGatewayError {
+  let error = try requireGoogleCalendarGatewayError {
     _ = try GoogleCalendarLoopbackRedirectURI("https://example.com/callback")
   }
 

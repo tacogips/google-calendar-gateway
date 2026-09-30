@@ -30,7 +30,7 @@ func parseArguments(_ arguments: [String]) throws -> ParsedArgs {
 
     let flagBody = String(token.dropFirst(2))
     guard !flagBody.isEmpty else {
-      throw CalendarGatewayError("Invalid empty flag", code: .invalidArgument, exitCode: .invalidCliUsage)
+      throw GoogleCalendarGatewayError("Invalid empty flag", code: .invalidArgument, exitCode: .invalidCliUsage)
     }
 
     let split = flagBody.split(separator: "=", maxSplits: 1, omittingEmptySubsequences: false)
@@ -77,7 +77,7 @@ func getStringFlag(_ flags: [String: StringOrBool], _ name: String) throws -> St
   case .string(let value):
     return value
   case .bool:
-    throw CalendarGatewayError("--\(name) requires a value", code: .invalidArgument, exitCode: .invalidCliUsage)
+    throw GoogleCalendarGatewayError("--\(name) requires a value", code: .invalidArgument, exitCode: .invalidCliUsage)
   }
 }
 
@@ -93,7 +93,7 @@ func getBooleanFlag(_ flags: [String: StringOrBool], _ name: String) throws -> B
   case .string("false"):
     return false
   case .string:
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       "--\(name) accepts only true or false when given a value",
       code: .invalidArgument,
       exitCode: .invalidCliUsage
@@ -105,7 +105,7 @@ func loadQuery(flags: [String: StringOrBool]) throws -> String {
   let inlineQuery = try getStringFlag(flags, "query")
   let queryFile = try getStringFlag(flags, "query-file")
   if (inlineQuery == nil) == (queryFile == nil) {
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       "Exactly one of --query or --query-file is required",
       code: .invalidArgument,
       exitCode: .invalidCliUsage
@@ -118,7 +118,7 @@ func loadQuery(flags: [String: StringOrBool]) throws -> String {
   do {
     return try String(contentsOfFile: path, encoding: .utf8)
   } catch {
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       "Failed to read GraphQL query file: \(path)",
       code: .invalidArgument,
       exitCode: .invalidCliUsage,
@@ -131,7 +131,7 @@ func loadVariables(flags: [String: StringOrBool]) throws -> [String: Any] {
   let inlineVariables = try getStringFlag(flags, "variables")
   let variablesFile = try getStringFlag(flags, "variables-file")
   if inlineVariables != nil && variablesFile != nil {
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       "Use only one of --variables or --variables-file",
       code: .invalidArgument,
       exitCode: .invalidCliUsage
@@ -158,10 +158,10 @@ private func loadVariablesFile(_ path: String) throws -> [String: Any] {
       invalidJsonMessage: "Failed to parse JSON variables file: \(path)",
       invalidObjectMessage: "JSON variables file must contain an object: \(path)"
     )
-  } catch let error as CalendarGatewayError {
+  } catch let error as GoogleCalendarGatewayError {
     throw error
   } catch {
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       "Failed to read JSON variables file: \(path)",
       code: .invalidArgument,
       exitCode: .invalidCliUsage,
@@ -179,7 +179,7 @@ private func parseJsonObject(
   do {
     value = try JSONSerialization.jsonObject(with: Data(source.utf8))
   } catch {
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       invalidJsonMessage,
       code: .invalidArgument,
       exitCode: .invalidCliUsage,
@@ -187,12 +187,12 @@ private func parseJsonObject(
     )
   }
   guard let object = value as? [String: Any] else {
-    throw CalendarGatewayError(invalidObjectMessage, code: .invalidArgument, exitCode: .invalidCliUsage)
+    throw GoogleCalendarGatewayError(invalidObjectMessage, code: .invalidArgument, exitCode: .invalidCliUsage)
   }
   return object
 }
 
-func errorOutput(_ error: CalendarGatewayError) -> [String: Any] {
+func errorOutput(_ error: GoogleCalendarGatewayError) -> [String: Any] {
   var payload: [String: Any] = [
     "message": error.message,
     "code": error.code.rawValue,

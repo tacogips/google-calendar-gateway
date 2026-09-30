@@ -71,10 +71,10 @@ func loadGoogleOAuthClient(
     let client = normalizedGoogleOAuthClient(selected.client)
     try validateGoogleOAuthClient(client, source: selected.source, credential: credential, use: use)
     return client
-  } catch let error as CalendarGatewayError {
+  } catch let error as GoogleCalendarGatewayError {
     throw error
   } catch {
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       "Failed to read Google Calendar OAuth client JSON",
       code: .configInvalid,
       exitCode: oauthClientLoadExitCode(use),
@@ -94,7 +94,7 @@ func validGoogleCalendarAccessToken(
     return try withGoogleCalendarTokenStoreLock(path: credential.tokenStorePath) {
       try validGoogleCalendarAccessTokenWithoutLock(credential: credential, use: use)
     }
-  } catch let error as CalendarGatewayError {
+  } catch let error as GoogleCalendarGatewayError {
     throw calendarTokenSourceError(error, credential: credential)
   }
 }
@@ -103,13 +103,13 @@ func writeGoogleCalendarOAuthTokenStore(
   _ tokenStore: CalendarOAuthTokenStore,
   to path: String,
   errorMessage: String,
-  exitCode: CalendarGatewayExitCode
+  exitCode: GoogleCalendarGatewayExitCode
 ) throws {
   do {
     let data = try JSONEncoder().encode(tokenStore)
     try writeCalendarSecureTokenFile(data, to: path)
   } catch {
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       errorMessage,
       code: .authRequired,
       exitCode: exitCode,
@@ -128,7 +128,7 @@ func loadGoogleCalendarOAuthTokenStore(
       data = Data(tokenStoreJSON.utf8)
     } else {
       guard calendarTokenFileExists(at: credential.tokenStorePath) else {
-        throw CalendarGatewayError(
+        throw GoogleCalendarGatewayError(
           missingAuthMessage,
           code: .authRequired,
           exitCode: .providerApiError,
@@ -138,10 +138,10 @@ func loadGoogleCalendarOAuthTokenStore(
       data = try calendarSecureTokenFileData(at: credential.tokenStorePath)
     }
     return try JSONDecoder().decode(CalendarOAuthTokenStore.self, from: data)
-  } catch let error as CalendarGatewayError {
+  } catch let error as GoogleCalendarGatewayError {
     throw error
   } catch {
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       "Failed to read Google Calendar token store",
       code: .authRequired,
       exitCode: .providerApiError,
@@ -161,7 +161,7 @@ private func validGoogleCalendarAccessTokenWithoutLock(
     return accessToken
   }
   guard credential.tokenStoreJSON == nil else {
-    throw CalendarGatewayError("Inline token JSON requires refresh but is immutable; select a writable token file and log in", code: .authRequired, exitCode: .providerApiError)
+    throw GoogleCalendarGatewayError("Inline token JSON requires refresh but is immutable; select a writable token file and log in", code: .authRequired, exitCode: .providerApiError)
   }
   return try refreshGoogleCalendarAccessToken(credential: credential, tokenStore: tokenStore)
 }
@@ -171,7 +171,7 @@ private func withGoogleCalendarTokenStoreLock<T>(path: String, operation: () thr
   let lockParent = try calendarTokenParent(lockPath, create: true)
   let fd = Darwin.openat(lockParent.fd, lockParent.leaf, O_CREAT | O_RDWR | O_NOFOLLOW, S_IRUSR | S_IWUSR)
   guard fd >= 0 else {
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       "Failed to open Google Calendar token store lock",
       code: .authRequired,
       exitCode: .providerApiError,
@@ -185,7 +185,7 @@ private func withGoogleCalendarTokenStoreLock<T>(path: String, operation: () thr
   guard Darwin.fstat(fd, &lockInfo) == 0,
         (lockInfo.st_mode & S_IFMT) == S_IFREG,
         lockInfo.st_nlink == 1 else {
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       "Refusing unsafe Google Calendar token store lock",
       code: .authRequired,
       exitCode: .providerApiError,
@@ -194,7 +194,7 @@ private func withGoogleCalendarTokenStoreLock<T>(path: String, operation: () thr
   }
   _ = fchmod(fd, S_IRUSR | S_IWUSR)
   guard flock(fd, LOCK_EX) == 0 else {
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       "Failed to lock Google Calendar token store",
       code: .authRequired,
       exitCode: .providerApiError,
@@ -209,7 +209,7 @@ private func withGoogleCalendarTokenStoreLock<T>(path: String, operation: () thr
 
 func revokeGoogleOAuthToken(_ token: String) throws {
   guard let revokeURL = URL(string: "https://oauth2.googleapis.com/revoke") else {
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       "Google OAuth revocation endpoint is invalid",
       code: .providerApiError,
       exitCode: .providerApiError
@@ -230,7 +230,7 @@ private func validateTokenStoreAccessMode(
 ) throws {
   let grantedAccessMode = tokenStore.accessMode ?? accessModeFromScopes(tokenStore.scope)
   if let grantedAccessMode, !calendarAccessMode(grantedAccessMode, covers: credential.accessMode) {
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       "Stored Google Calendar token scope does not match configured access mode",
       code: .authRequired,
       exitCode: .providerApiError,
@@ -239,7 +239,7 @@ private func validateTokenStoreAccessMode(
   }
   if let scope = nonBlank(tokenStore.scope),
      !calendarScopesCover(accessMode: credential.accessMode, grantedScope: scope) {
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       "Stored Google Calendar token scope is missing required calendar access",
       code: .authRequired,
       exitCode: .providerApiError,
@@ -247,7 +247,7 @@ private func validateTokenStoreAccessMode(
     )
   }
   if use == .write, credential.accessMode != .readWrite && credential.accessMode != .full {
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       "Google Calendar write access requires access_mode = \"read_write\" or \"full\"",
       code: .authRequired,
       exitCode: .providerApiError,
@@ -261,7 +261,7 @@ private func refreshGoogleCalendarAccessToken(
   tokenStore: CalendarOAuthTokenStore
 ) throws -> String {
   guard let refreshToken = nonBlank(tokenStore.refreshToken) else {
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       "Stored Google Calendar access token is expired and has no refresh token",
       code: .authRequired,
       exitCode: .providerApiError,
@@ -271,7 +271,7 @@ private func refreshGoogleCalendarAccessToken(
   let client = try loadGoogleOAuthClient(credential: credential, use: .tokenRefresh)
   guard let tokenURI = nonBlank(client.tokenURI),
         let tokenURL = URL(string: tokenURI) else {
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       "OAuth client token_uri is invalid",
       code: .configInvalid,
       exitCode: .configurationError,
@@ -296,7 +296,7 @@ private func refreshGoogleCalendarAccessToken(
   let response = try performGoogleCalendarHTTPRequest(request, context: "Google Calendar token refresh failed")
   guard let object = try JSONSerialization.jsonObject(with: response.data) as? [String: Any],
         let accessToken = nonBlank(object["access_token"] as? String) else {
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       "Google Calendar token refresh response did not include an access token",
       code: .authRequired,
       exitCode: .providerApiError,
@@ -349,7 +349,7 @@ func performGoogleCalendarHTTPRequest(
     }
     guard let data,
           let httpResponse = response as? HTTPURLResponse else {
-      box.store(.failure(CalendarGatewayError(
+      box.store(.failure(GoogleCalendarGatewayError(
         "Google Calendar API response was empty",
         code: .providerApiError,
         exitCode: .providerApiError
@@ -363,16 +363,16 @@ func performGoogleCalendarHTTPRequest(
   let resolved: (data: Data, response: HTTPURLResponse)
   do {
     resolved = try box.load()?.get() ?? {
-      throw CalendarGatewayError(
+      throw GoogleCalendarGatewayError(
         "Google Calendar API request did not complete",
         code: .providerApiError,
         exitCode: .providerApiError
       )
     }()
-  } catch let error as CalendarGatewayError {
+  } catch let error as GoogleCalendarGatewayError {
     throw error
   } catch {
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       context,
       code: .providerApiError,
       exitCode: .providerApiError,
@@ -394,8 +394,8 @@ func googleCalendarHTTPError(
   context: String,
   statusCode: Int,
   failureKind: GoogleCalendarHTTPFailureKind = .general
-) -> CalendarGatewayError {
-  let code: CalendarGatewayErrorCode
+) -> GoogleCalendarGatewayError {
+  let code: GoogleCalendarGatewayErrorCode
   switch statusCode {
   case 401, 403:
     code = .authRequired
@@ -408,7 +408,7 @@ func googleCalendarHTTPError(
   default:
     code = .providerApiError
   }
-  return CalendarGatewayError(
+  return GoogleCalendarGatewayError(
     context,
     code: code,
     exitCode: .providerApiError,
@@ -462,7 +462,7 @@ private func selectGoogleOAuthClient(
   switch use {
   case .desktopLogin:
     guard let installed = file.installed else {
-      throw CalendarGatewayError(
+      throw GoogleCalendarGatewayError(
         "OAuth client JSON must contain an installed desktop client",
         code: .configInvalid,
         exitCode: .authenticationBootstrapError,
@@ -475,7 +475,7 @@ private func selectGoogleOAuthClient(
       return (installed, .installed)
     }
     guard let web = file.web else {
-      throw CalendarGatewayError(
+      throw GoogleCalendarGatewayError(
         "OAuth client JSON must contain installed or web credentials",
         code: .configInvalid,
         exitCode: .configurationError,
@@ -516,8 +516,8 @@ private func validateGoogleOAuthClient(
 private func invalidOAuthClientError(
   credential: CalendarCredentialConfig,
   use: GoogleOAuthClientUse
-) -> CalendarGatewayError {
-  CalendarGatewayError(
+) -> GoogleCalendarGatewayError {
+  GoogleCalendarGatewayError(
     oauthClientInvalidMessage(use),
     code: .configInvalid,
     exitCode: oauthClientLoadExitCode(use),
@@ -534,7 +534,7 @@ private func oauthClientInvalidMessage(_ use: GoogleOAuthClientUse) -> String {
   }
 }
 
-private func oauthClientLoadExitCode(_ use: GoogleOAuthClientUse) -> CalendarGatewayExitCode {
+private func oauthClientLoadExitCode(_ use: GoogleOAuthClientUse) -> GoogleCalendarGatewayExitCode {
   switch use {
   case .desktopLogin:
     return .authenticationBootstrapError

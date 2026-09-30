@@ -1,25 +1,25 @@
 import Darwin
 import Foundation
 import Testing
-@testable import CalendarGatewayCore
+@testable import GoogleCalendarGatewayCore
 
 @Test func defaultCredentialDirectoryUsesXDGStateHome() {
-  let directory = CalendarGatewayConfigLoader.resolveDefaultCredentialDirectory(
+  let directory = GoogleCalendarGatewayConfigLoader.resolveDefaultCredentialDirectory(
     environment: ["XDG_STATE_HOME": "/tmp/xdg-state"]
   )
-  #expect(directory == "/tmp/xdg-state/calendar-gateway/credentials")
+  #expect(directory == "/tmp/xdg-state/google-calendar-gateway/credentials")
 }
 
 @Test func defaultCredentialDirectoryDefaultsToLocalState() {
-  let directory = CalendarGatewayConfigLoader.resolveDefaultCredentialDirectory(environment: [:])
+  let directory = GoogleCalendarGatewayConfigLoader.resolveDefaultCredentialDirectory(environment: [:])
   let home = FileManager.default.homeDirectoryForCurrentUser.path
-  #expect(directory == "\(home)/.local/state/calendar-gateway/credentials")
+  #expect(directory == "\(home)/.local/state/google-calendar-gateway/credentials")
 }
 
 @Test func credentialDirEnvironmentVariableOverridesStateDefault() {
-  let directory = CalendarGatewayConfigLoader.resolveDefaultCredentialDirectory(
+  let directory = GoogleCalendarGatewayConfigLoader.resolveDefaultCredentialDirectory(
     environment: [
-      "CALENDAR_GATEWAY_CREDENTIAL_DIR": "/tmp/riela-credentials",
+      "GOOGLE_CALENDAR_GATEWAY_CREDENTIAL_DIR": "/tmp/riela-credentials",
       "XDG_STATE_HOME": "/tmp/xdg-state"
     ]
   )
@@ -31,11 +31,11 @@ import Testing
     .appendingPathComponent("calendar-credential-dir-\(UUID().uuidString)", isDirectory: true)
   try FileManager.default.createDirectory(at: scratch, withIntermediateDirectories: true)
   defer { try? FileManager.default.removeItem(at: scratch) }
-  let missingConfig = scratch.appendingPathComponent("config/calendar-gateway/config.toml").path
-  let config = try CalendarGatewayConfigLoader.loadConfig(
+  let missingConfig = scratch.appendingPathComponent("config/google-calendar-gateway/config.toml").path
+  let config = try GoogleCalendarGatewayConfigLoader.loadConfig(
     environment: [
       "XDG_CONFIG_HOME": scratch.appendingPathComponent("config").path,
-      "CALENDAR_GATEWAY_CREDENTIAL_DIR": "/tmp/riela-credentials"
+      "GOOGLE_CALENDAR_GATEWAY_CREDENTIAL_DIR": "/tmp/riela-credentials"
     ]
   )
   _ = missingConfig
@@ -45,12 +45,12 @@ import Testing
 @Test func implicitConfigMigratesLegacySynthesizedTokenToXDGStateOnce() throws {
   let scratch = try makeCredentialMigrationScratch()
   defer { try? FileManager.default.removeItem(at: scratch.root) }
-  let legacy = scratch.config.appendingPathComponent("calendar-gateway/tokens/google-personal.json")
+  let legacy = scratch.config.appendingPathComponent("google-calendar-gateway/tokens/google-personal.json")
   try FileManager.default.createDirectory(at: legacy.deletingLastPathComponent(), withIntermediateDirectories: true)
   let expected = Data("{\"accessMode\":\"read\",\"accessToken\":\"legacy-token\"}".utf8)
   try expected.write(to: legacy)
 
-  let config = try CalendarGatewayConfigLoader.loadConfig(environment: scratch.environment)
+  let config = try GoogleCalendarGatewayConfigLoader.loadConfig(environment: scratch.environment)
   let destination = try #require(config.credentials.first?.tokenStorePath)
   let migrated = try Data(contentsOf: URL(fileURLWithPath: destination))
   #expect(migrated == expected)
@@ -59,28 +59,28 @@ import Testing
   #expect(filePermissions(URL(fileURLWithPath: destination).deletingLastPathComponent().path) == 0o700)
 
   try FileManager.default.removeItem(atPath: destination)
-  _ = try CalendarGatewayConfigLoader.loadConfig(environment: scratch.environment)
+  _ = try GoogleCalendarGatewayConfigLoader.loadConfig(environment: scratch.environment)
   #expect(!FileManager.default.fileExists(atPath: destination))
 }
 
 @Test func migrationNeverOverwritesStateTokenOrAppliesToCredentialDirectoryOverride() throws {
   let scratch = try makeCredentialMigrationScratch()
   defer { try? FileManager.default.removeItem(at: scratch.root) }
-  let legacy = scratch.config.appendingPathComponent("calendar-gateway/tokens/google-personal.json")
+  let legacy = scratch.config.appendingPathComponent("google-calendar-gateway/tokens/google-personal.json")
   try FileManager.default.createDirectory(at: legacy.deletingLastPathComponent(), withIntermediateDirectories: true)
   try Data("{\"accessMode\":\"read\",\"accessToken\":\"legacy-token\"}".utf8).write(to: legacy)
-  let destination = scratch.state.appendingPathComponent("calendar-gateway/credentials/google-personal.json")
+  let destination = scratch.state.appendingPathComponent("google-calendar-gateway/credentials/google-personal.json")
   try FileManager.default.createDirectory(at: destination.deletingLastPathComponent(), withIntermediateDirectories: true)
   try Data("new-token".utf8).write(to: destination)
 
-  _ = try CalendarGatewayConfigLoader.loadConfig(environment: scratch.environment)
+  _ = try GoogleCalendarGatewayConfigLoader.loadConfig(environment: scratch.environment)
   let preserved = try Data(contentsOf: destination)
   #expect(preserved == Data("new-token".utf8))
   #expect(FileManager.default.fileExists(atPath: legacy.path))
 
   let override = scratch.root.appendingPathComponent("override")
-  _ = try CalendarGatewayConfigLoader.loadConfig(environment: scratch.environment.merging([
-    "CALENDAR_GATEWAY_CREDENTIAL_DIR": override.path
+  _ = try GoogleCalendarGatewayConfigLoader.loadConfig(environment: scratch.environment.merging([
+    "GOOGLE_CALENDAR_GATEWAY_CREDENTIAL_DIR": override.path
   ]) { _, new in new })
   #expect(!FileManager.default.fileExists(atPath: override.appendingPathComponent("google-personal.json").path))
   #expect(FileManager.default.fileExists(atPath: legacy.path))
@@ -89,46 +89,46 @@ import Testing
 @Test func migrationRejectsSymlinkAndHardLinkedLegacyTokens() throws {
   let scratch = try makeCredentialMigrationScratch()
   defer { try? FileManager.default.removeItem(at: scratch.root) }
-  let legacy = scratch.config.appendingPathComponent("calendar-gateway/tokens/google-personal.json")
+  let legacy = scratch.config.appendingPathComponent("google-calendar-gateway/tokens/google-personal.json")
   try FileManager.default.createDirectory(at: legacy.deletingLastPathComponent(), withIntermediateDirectories: true)
   let outside = scratch.root.appendingPathComponent("outside-token")
   try Data("token".utf8).write(to: outside)
   try FileManager.default.createSymbolicLink(at: legacy, withDestinationURL: outside)
   #expect(throws: Error.self) {
-    try CalendarGatewayConfigLoader.loadConfig(environment: scratch.environment)
+    try GoogleCalendarGatewayConfigLoader.loadConfig(environment: scratch.environment)
   }
   try FileManager.default.removeItem(at: legacy)
   try FileManager.default.linkItem(at: outside, to: legacy)
   #expect(throws: Error.self) {
-    try CalendarGatewayConfigLoader.loadConfig(environment: scratch.environment)
+    try GoogleCalendarGatewayConfigLoader.loadConfig(environment: scratch.environment)
   }
 }
 
 @Test func migrationRejectsAncestorSymlinkAndFIFOWithoutBlocking() throws {
   let fixture = try makeCredentialMigrationScratch()
   defer { try? FileManager.default.removeItem(at: fixture.root) }
-  let legacy = fixture.config.appendingPathComponent("calendar-gateway/tokens/google-personal.json")
+  let legacy = fixture.config.appendingPathComponent("google-calendar-gateway/tokens/google-personal.json")
   try FileManager.default.createDirectory(at: legacy.deletingLastPathComponent(), withIntermediateDirectories: true)
   try Data("{\"accessMode\":\"read\"}".utf8).write(to: legacy)
   let outside = fixture.root.appendingPathComponent("outside")
   try FileManager.default.createDirectory(at: outside, withIntermediateDirectories: true)
   try FileManager.default.createDirectory(at: fixture.state, withIntermediateDirectories: true)
   try FileManager.default.createSymbolicLink(
-    at: fixture.state.appendingPathComponent("calendar-gateway"), withDestinationURL: outside
+    at: fixture.state.appendingPathComponent("google-calendar-gateway"), withDestinationURL: outside
   )
-  #expect(throws: Error.self) { try CalendarGatewayConfigLoader.loadConfig(environment: fixture.environment) }
-  try FileManager.default.removeItem(at: fixture.state.appendingPathComponent("calendar-gateway"))
+  #expect(throws: Error.self) { try GoogleCalendarGatewayConfigLoader.loadConfig(environment: fixture.environment) }
+  try FileManager.default.removeItem(at: fixture.state.appendingPathComponent("google-calendar-gateway"))
   try FileManager.default.removeItem(at: legacy)
   guard mkfifo(legacy.path, S_IRUSR | S_IWUSR) == 0 else { throw POSIXError(.EIO) }
-  #expect(throws: Error.self) { try CalendarGatewayConfigLoader.loadConfig(environment: fixture.environment) }
+  #expect(throws: Error.self) { try GoogleCalendarGatewayConfigLoader.loadConfig(environment: fixture.environment) }
 }
 
 @Test func relativeXDGRootsFallBackToStandardLocations() {
   let home = FileManager.default.homeDirectoryForCurrentUser.path
-  #expect(CalendarGatewayConfigLoader.resolveDefaultCredentialDirectory(environment: ["XDG_STATE_HOME": "relative"]) ==
-    "\(home)/.local/state/calendar-gateway/credentials")
-  #expect(CalendarGatewayConfigLoader.resolveDefaultConfigPath(environment: ["XDG_CONFIG_HOME": "relative"]) ==
-    "\(home)/.config/calendar-gateway/config.toml")
+  #expect(GoogleCalendarGatewayConfigLoader.resolveDefaultCredentialDirectory(environment: ["XDG_STATE_HOME": "relative"]) ==
+    "\(home)/.local/state/google-calendar-gateway/credentials")
+  #expect(GoogleCalendarGatewayConfigLoader.resolveDefaultConfigPath(environment: ["XDG_CONFIG_HOME": "relative"]) ==
+    "\(home)/.config/google-calendar-gateway/config.toml")
 }
 
 private struct CredentialMigrationScratch {
@@ -141,15 +141,15 @@ private struct CredentialMigrationScratch {
 @Test func missingImplicitCredentialsDoNotCreateStateDirectories() throws {
   let fixture = try makeCredentialMigrationScratch()
   defer { try? FileManager.default.removeItem(at: fixture.root) }
-  _ = try CalendarGatewayConfigLoader.loadConfig(environment: fixture.environment)
+  _ = try GoogleCalendarGatewayConfigLoader.loadConfig(environment: fixture.environment)
   #expect(!FileManager.default.fileExists(atPath: fixture.state.path))
 }
 
 @Test func interruptedMigrationRecoversMarkerAndCannotResurrectRevokedToken() throws {
   let fixture = try makeCredentialMigrationScratch()
   defer { try? FileManager.default.removeItem(at: fixture.root) }
-  let legacy = fixture.config.appendingPathComponent("calendar-gateway/tokens/google-personal.json")
-  let destination = fixture.state.appendingPathComponent("calendar-gateway/credentials/google-personal.json")
+  let legacy = fixture.config.appendingPathComponent("google-calendar-gateway/tokens/google-personal.json")
+  let destination = fixture.state.appendingPathComponent("google-calendar-gateway/credentials/google-personal.json")
   try FileManager.default.createDirectory(at: legacy.deletingLastPathComponent(), withIntermediateDirectories: true)
   let token = Data("{\"accessMode\":\"read\",\"accessToken\":\"test-token\"}".utf8)
   try token.write(to: legacy)
@@ -158,9 +158,9 @@ private struct CredentialMigrationScratch {
   }
   #expect(try Data(contentsOf: destination) == token)
   #expect(!FileManager.default.fileExists(atPath: destination.path + ".migration-complete"))
-  _ = try CalendarGatewayConfigLoader.loadConfig(environment: fixture.environment)
+  _ = try GoogleCalendarGatewayConfigLoader.loadConfig(environment: fixture.environment)
   #expect(try removeCalendarSecureTokenFile(at: destination.path))
-  _ = try CalendarGatewayConfigLoader.loadConfig(environment: fixture.environment)
+  _ = try GoogleCalendarGatewayConfigLoader.loadConfig(environment: fixture.environment)
   #expect(!FileManager.default.fileExists(atPath: destination.path))
   #expect(FileManager.default.fileExists(atPath: legacy.path))
 }

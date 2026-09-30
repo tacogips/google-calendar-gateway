@@ -1,19 +1,21 @@
 import Foundation
 
 public func executeCalendarGraphQL(
-  config: CalendarGatewayConfig,
-  query: String
-) throws -> (body: [String: Any], exitCode: CalendarGatewayExitCode) {
-  try executeCalendarGraphQL(service: CalendarGatewayService(config: config), query: query)
+  config: GoogleCalendarGatewayConfig,
+  query: String,
+  mode: GoogleCalendarGatewayCLIMode = .writer
+) throws -> (body: [String: Any], exitCode: GoogleCalendarGatewayExitCode) {
+  try executeCalendarGraphQL(service: GoogleCalendarGatewayService(config: config), query: query, mode: mode)
 }
 
 public func executeCalendarGraphQL(
-  service: CalendarGatewayService,
-  query: String
-) throws -> (body: [String: Any], exitCode: CalendarGatewayExitCode) {
+  service: GoogleCalendarGatewayService,
+  query: String,
+  mode: GoogleCalendarGatewayCLIMode = .writer
+) throws -> (body: [String: Any], exitCode: GoogleCalendarGatewayExitCode) {
   do {
-    return (["data": try executeCalendarGraphQLData(service: service, query: query)], .success)
-  } catch let error as CalendarGatewayError {
+    return (["data": try executeCalendarGraphQLData(service: service, query: query, mode: mode)], .success)
+  } catch let error as GoogleCalendarGatewayError {
     var extensions: [String: Any] = [
       "code": error.code.rawValue,
       "exitCode": error.exitCode.rawValue
@@ -36,25 +38,30 @@ public func executeCalendarGraphQL(
   }
 }
 
-private func executeCalendarGraphQLData(service: CalendarGatewayService, query: String) throws -> [String: Any] {
+private func executeCalendarGraphQLData(service: GoogleCalendarGatewayService, query: String, mode: GoogleCalendarGatewayCLIMode) throws -> [String: Any] {
   try rejectUnsupportedGraphQLVariables(in: query)
   let rootFields = topLevelRootFields(in: query)
   if rootFields.count > 1 {
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       "GraphQL operations may contain exactly one root field",
       code: .invalidArgument,
       exitCode: .graphqlExecutionError
     )
   }
   if let source = rootFieldSource("calendarAPI", in: query) {
+    let request = try rawCalendarAPIRequest(from: source)
+    if rawCalendarAPITokenUse(for: request) == .write {
+      try mode.requireWrites()
+    }
     return [
       "calendarAPI": projectGraphQLValue(
-        try service.executeCalendarAPI(request: rawCalendarAPIRequest(from: source)),
+        try service.executeCalendarAPI(request: request),
         selection: selectionBodyFromFieldSource(source)
       )
     ]
   }
   if let source = rootFieldSource("createEvent", in: query) {
+    try mode.requireWrites()
     return [
       "createEvent": projectGraphQLValue(
         try service.createEvent(
@@ -66,6 +73,7 @@ private func executeCalendarGraphQLData(service: CalendarGatewayService, query: 
     ]
   }
   if let source = rootFieldSource("updateEvent", in: query) {
+    try mode.requireWrites()
     return [
       "updateEvent": projectGraphQLValue(
         try service.updateEvent(
@@ -77,6 +85,7 @@ private func executeCalendarGraphQLData(service: CalendarGatewayService, query: 
     ]
   }
   if let source = rootFieldSource("deleteEvent", in: query) {
+    try mode.requireWrites()
     let gatewayCalendarId = try extractOptionalStringArgument("accountId", from: source)
       ?? extractStringArgument("calendarId", from: source)
     return [
@@ -167,7 +176,7 @@ private func executeCalendarGraphQLData(service: CalendarGatewayService, query: 
       )
     ]
   }
-  throw CalendarGatewayError(
+  throw GoogleCalendarGatewayError(
     "Unsupported GraphQL query",
     code: .invalidArgument,
     exitCode: .graphqlExecutionError
@@ -178,7 +187,7 @@ func rejectUnsupportedGraphQLVariables(in query: String) throws {
   guard graphQLReferencesVariables(query) else {
     return
   }
-  throw CalendarGatewayError(
+  throw GoogleCalendarGatewayError(
     "GraphQL variables are not supported yet; use literal arguments",
     code: .invalidArgument,
     exitCode: .graphqlExecutionError
@@ -188,7 +197,7 @@ func rejectUnsupportedGraphQLVariables(in query: String) throws {
 private func rawCalendarAPIRequest(from source: String) throws -> CalendarRawAPIRequest {
   let methodValue = try extractStringArgument("method", from: source).uppercased()
   guard let method = CalendarRawHTTPMethod(rawValue: methodValue) else {
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       "GraphQL argument method must be one of: GET, POST, PUT, PATCH, DELETE",
       code: .invalidArgument,
       exitCode: .graphqlExecutionError
@@ -197,7 +206,7 @@ private func rawCalendarAPIRequest(from source: String) throws -> CalendarRawAPI
   let access: CalendarRawAPIAccess
   if let accessValue = try extractOptionalStringArgument("access", from: source) {
     guard let parsed = CalendarRawAPIAccess(rawValue: accessValue) else {
-      throw CalendarGatewayError(
+      throw GoogleCalendarGatewayError(
         "GraphQL argument access must be one of: auto, read, write",
         code: .invalidArgument,
         exitCode: .graphqlExecutionError
@@ -360,7 +369,7 @@ private func freeBusyProviderCalendarIds(from source: String) throws -> [String]
 
 private func extractRFC3339DateTimeArgument(_ name: String, from query: String) throws -> String {
   guard let value = try extractOptionalRFC3339DateTimeArgument(name, from: query) else {
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       "Missing GraphQL argument: \(name)",
       code: .invalidArgument,
       exitCode: .graphqlExecutionError
@@ -374,7 +383,7 @@ private func extractOptionalRFC3339DateTimeArgument(_ name: String, from query: 
     return nil
   }
   guard isRFC3339DateTime(value) else {
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       "GraphQL argument \(name) must be an RFC 3339 date-time string",
       code: .invalidArgument,
       exitCode: .graphqlExecutionError
@@ -388,7 +397,7 @@ private func extractOptionalCalendarDateOrDateTimeArgument(_ name: String, from 
     return nil
   }
   guard isCalendarDate(value) || isRFC3339DateTime(value) else {
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       "GraphQL argument \(name) must be an RFC 3339 date-time or YYYY-MM-DD date string",
       code: .invalidArgument,
       exitCode: .graphqlExecutionError
@@ -409,7 +418,7 @@ private func extractOptionalMaxResultsArgument(from source: String) throws -> In
     return nil
   }
   guard (1...2500).contains(maxResults) else {
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       "GraphQL argument maxResults must be between 1 and 2500",
       code: .invalidArgument,
       exitCode: .graphqlExecutionError
@@ -423,7 +432,7 @@ private func extractOptionalEventOrderByArgument(from source: String) throws -> 
     return nil
   }
   guard let orderBy = CalendarEventOrderBy(rawValue: value) else {
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       "GraphQL argument orderBy must be one of: startTime, updated",
       code: .invalidArgument,
       exitCode: .graphqlExecutionError
@@ -445,7 +454,7 @@ private func extractOptionalEnumArgument<T: RawRepresentable>(
     return nil
   }
   guard let typedValue = type.init(rawValue: value) else {
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       "GraphQL argument \(name) is invalid",
       code: .invalidArgument,
       exitCode: .graphqlExecutionError
@@ -459,7 +468,7 @@ private func parseReminderOverride(_ value: String) throws -> CalendarEventRemin
   guard parts.count == 2,
         let method = CalendarEventReminderMethod(rawValue: String(parts[0])),
         let minutes = Int(String(parts[1])) else {
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       "GraphQL argument reminderOverrides must contain values like popup:30 or email:1440",
       code: .invalidArgument,
       exitCode: .graphqlExecutionError
@@ -635,14 +644,14 @@ private func indexAfterBalancedDelimiter(
 
 private func extractStringArgument(_ name: String, from query: String) throws -> String {
   guard let value = try extractOptionalStringArgument(name, from: query) else {
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       "Missing GraphQL argument: \(name)",
       code: .invalidArgument,
       exitCode: .graphqlExecutionError
     )
   }
   guard let normalized = nonBlank(value) else {
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       "GraphQL argument \(name) must be a non-empty string",
       code: .invalidArgument,
       exitCode: .graphqlExecutionError
@@ -657,7 +666,7 @@ private func extractOptionalStringArgument(_ name: String, from query: String) t
   }
   let raw = query[range].trimmingCharacters(in: .whitespacesAndNewlines)
   guard raw.hasPrefix("\""), raw.hasSuffix("\"") else {
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       "GraphQL argument \(name) must be a string literal",
       code: .invalidArgument,
       exitCode: .graphqlExecutionError
@@ -672,7 +681,7 @@ private func extractOptionalIntArgument(_ name: String, from query: String) thro
   }
   let raw = query[range].trimmingCharacters(in: .whitespacesAndNewlines)
   guard let value = Int(raw) else {
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       "GraphQL argument \(name) must be an integer literal",
       code: .invalidArgument,
       exitCode: .graphqlExecutionError
@@ -692,7 +701,7 @@ private func extractOptionalBooleanArgument(_ name: String, from query: String) 
   case "false":
     return false
   default:
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       "GraphQL argument \(name) must be a boolean literal",
       code: .invalidArgument,
       exitCode: .graphqlExecutionError
@@ -706,7 +715,7 @@ private func extractOptionalStringArrayArgument(_ name: String, from query: Stri
   }
   let raw = query[range].trimmingCharacters(in: .whitespacesAndNewlines)
   guard raw.hasPrefix("["), raw.hasSuffix("]") else {
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       "GraphQL argument \(name) must be a string array literal",
       code: .invalidArgument,
       exitCode: .graphqlExecutionError
@@ -719,7 +728,7 @@ private func extractOptionalStringArrayArgument(_ name: String, from query: Stri
   return try splitGraphQLArray(String(inner)).map { item in
     let trimmed = item.trimmingCharacters(in: .whitespacesAndNewlines)
     guard trimmed.hasPrefix("\""), trimmed.hasSuffix("\"") else {
-      throw CalendarGatewayError(
+      throw GoogleCalendarGatewayError(
         "GraphQL argument \(name) must contain string literals",
         code: .invalidArgument,
         exitCode: .graphqlExecutionError
@@ -734,7 +743,7 @@ private func extractOptionalQueryItemsArgument(from source: String) throws -> [(
     let parts = item.split(separator: "=", maxSplits: 1, omittingEmptySubsequences: false)
     guard parts.count == 2,
           nonBlank(String(parts[0])) != nil else {
-      throw CalendarGatewayError(
+      throw GoogleCalendarGatewayError(
         "GraphQL argument query must contain values like name=value",
         code: .invalidArgument,
         exitCode: .graphqlExecutionError
@@ -750,7 +759,7 @@ private func extractOptionalDecodedStringArgument(_ name: String, from query: St
   }
   let raw = query[range].trimmingCharacters(in: .whitespacesAndNewlines)
   guard raw.hasPrefix("\""), raw.hasSuffix("\"") else {
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       "GraphQL argument \(name) must be a string literal",
       code: .invalidArgument,
       exitCode: .graphqlExecutionError
@@ -759,7 +768,7 @@ private func extractOptionalDecodedStringArgument(_ name: String, from query: St
   do {
     return try JSONDecoder().decode(String.self, from: Data(raw.utf8))
   } catch {
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       "GraphQL argument \(name) must be a valid escaped string literal",
       code: .invalidArgument,
       exitCode: .graphqlExecutionError,

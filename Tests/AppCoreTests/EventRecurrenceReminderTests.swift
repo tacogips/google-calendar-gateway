@@ -1,9 +1,9 @@
 import Testing
-@testable import CalendarGatewayCore
+@testable import GoogleCalendarGatewayCore
 
 @Test func createEventGraphQLSupportsRecurrenceAndReminderOverrides() throws {
   let result = try executeCalendarGraphQL(
-    service: CalendarGatewayService(config: testConfig(accessMode: .readWrite), provider: FakeCalendarProvider()),
+    service: GoogleCalendarGatewayService(config: testConfig(accessMode: .readWrite), provider: FakeCalendarProvider()),
     query: """
     mutation {
       createEvent(
@@ -35,7 +35,7 @@ import Testing
 }
 
 @Test func serviceSupportsTypedRecurrenceAndReminders() throws {
-  let event = try CalendarGatewayService(
+  let event = try GoogleCalendarGatewayService(
     config: testConfig(accessMode: .readWrite),
     provider: FakeCalendarProvider()
   ).createCalendarEvent(input: CalendarEventInput(
@@ -78,8 +78,8 @@ import Testing
 }
 
 @Test func recurrenceAndReminderValidationRunsBeforeProviderCall() throws {
-  let missingTimeZone = try requireCalendarGatewayError {
-    _ = try CalendarGatewayService(
+  let missingTimeZone = try requireGoogleCalendarGatewayError {
+    _ = try GoogleCalendarGatewayService(
       config: testConfig(accessMode: .readWrite),
       provider: FailingWriteProvider()
     ).createEvent(input: CalendarEventInput(
@@ -90,8 +90,8 @@ import Testing
       recurrenceRules: ["RRULE:FREQ=DAILY;COUNT=2"]
     ))
   }
-  let invalidReminder = try requireCalendarGatewayError {
-    _ = try CalendarGatewayService(
+  let invalidReminder = try requireGoogleCalendarGatewayError {
+    _ = try GoogleCalendarGatewayService(
       config: testConfig(accessMode: .readWrite),
       provider: FailingWriteProvider()
     ).createEvent(input: CalendarEventInput(
@@ -108,8 +108,8 @@ import Testing
 }
 
 @Test func recurrenceRulesRejectEmbeddedStartAndEnd() throws {
-  let error = try requireCalendarGatewayError {
-    _ = try CalendarGatewayService(
+  let error = try requireGoogleCalendarGatewayError {
+    _ = try GoogleCalendarGatewayService(
       config: testConfig(accessMode: .readWrite),
       provider: FailingWriteProvider()
     ).createEvent(input: CalendarEventInput(
@@ -126,7 +126,7 @@ import Testing
 
 @Test func graphQLRejectsInvalidReminderOverrideLiteral() throws {
   let result = try executeCalendarGraphQL(
-    service: CalendarGatewayService(config: testConfig(accessMode: .readWrite), provider: FailingWriteProvider()),
+    service: GoogleCalendarGatewayService(config: testConfig(accessMode: .readWrite), provider: FailingWriteProvider()),
     query: """
     mutation {
       createEvent(

@@ -13,13 +13,13 @@ provider protocol.
 
 ## Long-Running Transport
 
-Is `calendar-gateway serve` required for v1, or is one-shot GraphQL sufficient?
+Is `google-calendar-gateway serve` required for v1, or is one-shot GraphQL sufficient?
 
 Default design decision: one-shot GraphQL only for v1.
 
 ## CLI Shape
 
-Should v1 remain a single `calendar-gateway` executable, or split into separate
+Should v1 remain a single `google-calendar-gateway` executable, or split into separate
 reader/writer binaries like the mail-gateway reference?
 
 Default design decision: use one executable with access-mode gating unless

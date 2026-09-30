@@ -719,7 +719,7 @@ func pageTokenFromCalendarEventCursor(_ cursor: String) throws -> String {
         let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
         intValue(object["version"]) == 1,
         let pageToken = nonBlank(object["pageToken"] as? String) else {
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       "GraphQL argument cursor is invalid",
       code: .invalidArgument,
       exitCode: .graphqlExecutionError

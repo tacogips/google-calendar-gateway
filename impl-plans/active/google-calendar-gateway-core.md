@@ -6,7 +6,7 @@ Active
 
 ## Scope
 
-Implement the first production-shaped slice of `calendar-gateway` as a Swift
+Implement the first production-shaped slice of `google-calendar-gateway` as a Swift
 library and local CLI client, using the mail-gateway command/config patterns but
 calendar-native public concepts.
 
@@ -19,7 +19,7 @@ Reference files from a sibling `mail-gateway` checkout:
 
 ## Completed In Current Slice
 
-- Renamed the library target to `CalendarGatewayCore`.
+- Renamed the library target to `GoogleCalendarGatewayCore`.
 - Added config loading for `[storage]`, `[[credentials]]`, and
   `[[calendars]]`.
 - Added calendar credential environment overrides for OAuth client and token
@@ -29,14 +29,14 @@ Reference files from a sibling `mail-gateway` checkout:
   `providerCalendars`, `freeBusy`, `events`, and `event`.
 - Added a provider protocol and injectable service boundary so tests and future
   providers do not depend on live Google Calendar calls.
-- Added typed Swift library models: `CalendarGatewayClient`, `CalendarInfo`,
+- Added typed Swift library models: `GoogleCalendarGatewayClient`, `CalendarInfo`,
   `CalendarCapabilities`, `ProviderCalendarInfo`, `CalendarEvent`,
   `CalendarEventParticipant`, `CalendarEventDateTime`, `CalendarEventReminders`,
   `CalendarEventReminder`, `CalendarConferenceData`,
   `CalendarConferenceEntryPoint`, and `CalendarEventConnection`.
 - Added configured calendar `display_name` parsing and `CalendarInfo.displayName`
   exposure.
-- Added provider calendar discovery through `CalendarGatewayClient`
+- Added provider calendar discovery through `GoogleCalendarGatewayClient`
   and GraphQL `providerCalendars(credentialId:)`.
 - Added a Google Calendar HTTP adapter for `events.list` and `events.get`.
 - Added Google Calendar `calendarList.list` discovery.
@@ -111,7 +111,7 @@ Reference files from a sibling `mail-gateway` checkout:
   date/delete-event validation plus command and global flag/positional
   argument rejection and duplicate flag rejection.
 - `swift build` passed on 2026-07-01 after adding duplicate flag rejection.
-- `swift run calendar-gateway --help` passed on 2026-07-01 after adding
+- `swift run google-calendar-gateway --help` passed on 2026-07-01 after adding
   duplicate flag rejection.
 - `mise run lint` passed on 2026-07-01 through `nix develop` with Xcode
   `DEVELOPER_DIR`, `SDKROOT`, `TOOLCHAINS`, and toolchain `PATH` overrides
@@ -128,7 +128,7 @@ Reference files from a sibling `mail-gateway` checkout:
 - Design review accepted the design and reported one low finding about citing
   concrete mail-gateway reference files.
 - The finding is addressed in this plan and
-  `design-docs/specs/calendar-gateway.md`.
+  `design-docs/specs/google-calendar-gateway.md`.
 - Step 4 failed after interruption and supervised reruns because codex-agent
   authentication was unavailable; local implementation continued against the
   accepted Riela design.

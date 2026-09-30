@@ -1,4 +1,4 @@
-public extension CalendarGatewayService {
+public extension GoogleCalendarGatewayService {
   func createEvent(input: CalendarEventInput, dryRun: Bool = false) throws -> Any {
     try createEventMutation(input: input, dryRun: dryRun).jsonObject
   }
@@ -55,7 +55,7 @@ public extension CalendarGatewayService {
     let account = try requireAccount(input.accountId)
     let credential = try requireWriteCredential(account.credentialId)
     guard nonBlank(input.eventId) != nil else {
-      throw CalendarGatewayError(
+      throw GoogleCalendarGatewayError(
         "updateEvent requires eventId",
         code: .invalidArgument,
         exitCode: .graphqlExecutionError
@@ -104,7 +104,7 @@ public extension CalendarGatewayService {
     let account = try requireAccount(accountId)
     let credential = try requireWriteCredential(account.credentialId)
     guard let normalizedEventId = nonBlank(eventId) else {
-      throw CalendarGatewayError(
+      throw GoogleCalendarGatewayError(
         "deleteEvent requires eventId",
         code: .invalidArgument,
         exitCode: .graphqlExecutionError

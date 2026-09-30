@@ -39,23 +39,23 @@ public struct CalendarRawAPIRequest: Sendable {
   }
 }
 
-public struct CalendarGatewayGraphQLResolver {
-  public let service: CalendarGatewayService
+public struct GoogleCalendarGatewayGraphQLResolver {
+  public let service: GoogleCalendarGatewayService
 
-  public init(config: CalendarGatewayConfig) {
-    self.init(service: CalendarGatewayService(config: config))
+  public init(config: GoogleCalendarGatewayConfig) {
+    self.init(service: GoogleCalendarGatewayService(config: config))
   }
 
-  public init(service: CalendarGatewayService) {
+  public init(service: GoogleCalendarGatewayService) {
     self.service = service
   }
 
-  public func execute(query: String) throws -> (body: [String: Any], exitCode: CalendarGatewayExitCode) {
+  public func execute(query: String) throws -> (body: [String: Any], exitCode: GoogleCalendarGatewayExitCode) {
     try executeCalendarGraphQL(service: service, query: query)
   }
 }
 
-public extension CalendarGatewayService {
+public extension GoogleCalendarGatewayService {
   func executeCalendarAPI(request: CalendarRawAPIRequest) throws -> [String: Any] {
     try validateRawCalendarAPIRequest(request)
     let credential: CalendarCredentialConfig
@@ -76,7 +76,7 @@ func validateRawCalendarAPIRequest(_ request: CalendarRawAPIRequest) throws {
         !request.path.contains("#"),
         !request.path.contains("\n"),
         !request.path.split(separator: "/").contains("..") else {
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       "calendarAPI path must be a relative Calendar v3 path starting with /",
       code: .invalidArgument,
       exitCode: .graphqlExecutionError
@@ -86,7 +86,7 @@ func validateRawCalendarAPIRequest(_ request: CalendarRawAPIRequest) throws {
     _ = try parseRawCalendarAPIJSONBody(bodyJSON)
   }
   for item in request.queryItems where nonBlank(item.0) == nil {
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       "calendarAPI query item names must be non-empty",
       code: .invalidArgument,
       exitCode: .graphqlExecutionError
@@ -115,7 +115,7 @@ func parseRawCalendarAPIJSONBody(_ bodyJSON: String) throws -> Any {
   do {
     return try JSONSerialization.jsonObject(with: Data(bodyJSON.utf8))
   } catch {
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       "calendarAPI body must be valid JSON",
       code: .invalidArgument,
       exitCode: .graphqlExecutionError,

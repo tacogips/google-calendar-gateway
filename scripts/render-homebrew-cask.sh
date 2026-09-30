@@ -3,8 +3,7 @@ set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "$script_dir/.." && pwd)"
-artifact_name="calendar-gateway"
-product="calendar-gateway"
+artifact_name="google-calendar-gateway"
 
 usage() {
   cat <<EOF
@@ -55,7 +54,7 @@ main() {
   version="$1"
   output="${2:-$repo_root/Casks/$artifact_name.rb}"
   release_dir="${CASK_RELEASE_DIR:-$repo_root/dist/homebrew-cask}"
-  release_base_url="${CASK_RELEASE_BASE_URL:-https://github.com/tacogips/calendar-gateway/releases/download/v$version}"
+  release_base_url="${CASK_RELEASE_BASE_URL:-https://github.com/tacogips/google-calendar-gateway/releases/download/v$version}"
 
   local darwin_arm64_sha darwin_x64_sha
   darwin_arm64_sha="$(sha_for_target "$version" darwin-arm64 "$release_dir")"
@@ -63,7 +62,7 @@ main() {
 
   mkdir -p "$(dirname "$output")"
   cat > "$output" <<EOF
-cask "calendar-gateway" do
+cask "google-calendar-gateway" do
   version "$version"
   arch arm: "darwin-arm64", intel: "darwin-x64"
 
@@ -71,21 +70,22 @@ cask "calendar-gateway" do
          intel: "$darwin_x64_sha"
 
   url "$release_base_url/$artifact_name-#{version}-#{arch}.dmg"
-  name "calendar-gateway"
+  name "google-calendar-gateway"
   desc "Swift library and local CLI gateway for calendar clients"
-  homepage "https://github.com/tacogips/calendar-gateway"
+  homepage "https://github.com/tacogips/google-calendar-gateway"
 
   livecheck do
     url :url
     strategy :github_latest
   end
 
-  binary "$product"
+  binary "google-calendar-gateway-reader"
+  binary "google-calendar-gateway-writer"
 
   caveats do
     <<~EOS
-      This cask installs the signed and notarized macOS command line tool.
-      Homebrew links $product into the native Homebrew prefix for this Mac.
+      This cask installs the signed and notarized macOS command line tools.
+      Homebrew links google-calendar-gateway-reader and google-calendar-gateway-writer into the native Homebrew prefix for this Mac.
     EOS
   end
 end

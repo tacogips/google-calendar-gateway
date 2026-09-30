@@ -1,10 +1,10 @@
 import Foundation
 import Testing
-@testable import CalendarGatewayCore
+@testable import GoogleCalendarGatewayCore
 
 @Test func cachePruneRequiresSelector() throws {
-  let error = try requireCalendarGatewayError {
-    _ = try CalendarGatewayService(config: testConfig()).pruneCache(calendarId: nil, all: false)
+  let error = try requireGoogleCalendarGatewayError {
+    _ = try GoogleCalendarGatewayService(config: testConfig()).pruneCache(calendarId: nil, all: false)
   }
 
   #expect(error.code == .invalidArgument)
@@ -27,12 +27,12 @@ import Testing
   )
   try "{}".write(toFile: target, atomically: true, encoding: .utf8)
 
-  let result = CalendarGatewayCLI().run(
+  let result = GoogleCalendarGatewayCLI().run(
     arguments: ["--config", paths.config, "cache", "prune", "--calendar", "personal"],
     environment: env(paths: paths)
   )
 
-  #expect(result.exitCode == CalendarGatewayExitCode.success.rawValue)
+  #expect(result.exitCode == GoogleCalendarGatewayExitCode.success.rawValue)
   #expect(!FileManager.default.fileExists(atPath: target))
   #expect(FileManager.default.fileExists(atPath: paths.cache))
 }
@@ -49,12 +49,12 @@ import Testing
   try FileManager.default.createDirectory(atPath: outside, withIntermediateDirectories: true)
   try FileManager.default.createSymbolicLink(atPath: symlink, withDestinationPath: outside)
 
-  let result = CalendarGatewayCLI().run(
+  let result = GoogleCalendarGatewayCLI().run(
     arguments: ["--config", paths.config, "cache", "prune", "--calendar", "personal"],
     environment: env(paths: paths)
   )
 
-  #expect(result.exitCode == CalendarGatewayExitCode.configurationError.rawValue)
+  #expect(result.exitCode == GoogleCalendarGatewayExitCode.configurationError.rawValue)
   #expect(result.stderr.contains("Refusing to prune outside the configured cache root"))
   #expect(FileManager.default.fileExists(atPath: outside))
 }

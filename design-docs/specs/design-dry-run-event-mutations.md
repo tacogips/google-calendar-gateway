@@ -21,7 +21,7 @@ operational boundary.
 The feature covers `createEvent`, `updateEvent`, and `deleteEvent` through all
 three public entry points:
 
-- the `CalendarGatewayService` library boundary, with `dryRun` defaulting to
+- the `GoogleCalendarGatewayService` library boundary, with `dryRun` defaulting to
   `false`
 - the lightweight GraphQL executor, with an optional `dryRun: Boolean`
   argument defaulting to `false`
@@ -39,7 +39,7 @@ and is not implied by this design.
 
 ## Library Method And Result Contract
 
-All dry-run behavior is owned by `CalendarGatewayService`. The implementation
+All dry-run behavior is owned by `GoogleCalendarGatewayService`. The implementation
 adds one shared public result type and three result-producing methods:
 
 - `createEventMutation(input:dryRun:) throws -> CalendarEventMutationResult`
@@ -363,9 +363,9 @@ mutation root fields. Omission and `dryRun: false` select the existing live
 path. Non-Boolean literals fail with the existing `INVALID_ARGUMENT` GraphQL
 execution behavior.
 
-The executor maps `createEvent` to `CalendarGatewayService.createEvent`,
-`updateEvent` to `CalendarGatewayService.updateEvent`, and `deleteEvent` to
-`CalendarGatewayService.deleteEvent`, passing the extracted Boolean to the new
+The executor maps `createEvent` to `GoogleCalendarGatewayService.createEvent`,
+`updateEvent` to `GoogleCalendarGatewayService.updateEvent`, and `deleteEvent` to
+`GoogleCalendarGatewayService.deleteEvent`, passing the extracted Boolean to the new
 defaulted parameter. Those wrappers delegate to the corresponding shared
 `createEventMutation`, `updateEventMutation`, or `deleteEventMutation` method.
 For live results, the GraphQL field continues to see the existing unwrapped
@@ -402,9 +402,9 @@ top-level error shape is introduced.
 The canonical direct commands are singular `event` commands:
 
 ```text
-calendar-gateway event create --calendar <local-id> [event input flags] [--dry-run]
-calendar-gateway event update --calendar <local-id> --event-id <id> [event input flags] [--dry-run]
-calendar-gateway event delete --calendar <local-id> --event-id <id> [--provider-calendar <id>] [--send-updates <value>] [--dry-run]
+google-calendar-gateway-writer event create --calendar <local-id> [event input flags] [--dry-run]
+google-calendar-gateway-writer event update --calendar <local-id> --event-id <id> [event input flags] [--dry-run]
+google-calendar-gateway-writer event delete --calendar <local-id> --event-id <id> [--provider-calendar <id>] [--send-updates <value>] [--dry-run]
 ```
 
 Create and update input flags map one-to-one to the canonical event input
@@ -473,30 +473,30 @@ preview dictionaries, or normalize inputs independently.
 
 ### CLI Service Injection Boundary
 
-`CalendarGatewayCLI` gains one stored service factory with the module-internal
-shape `(CalendarGatewayConfig) -> CalendarGatewayService`. Its existing public
+`GoogleCalendarGatewayCLI` gains one stored service factory with the module-internal
+shape `(GoogleCalendarGatewayConfig) -> GoogleCalendarGatewayService`. Its existing public
 `init()` remains source-compatible and installs the production factory
-`{ CalendarGatewayService(config: $0) }`, which retains the live provider. A
+`{ GoogleCalendarGatewayService(config: $0) }`, which retains the live provider. A
 second module-internal `init(serviceFactory:)` is visible to the test target
-through `@testable import CalendarGatewayCore`; it does not become a public CLI
+through `@testable import GoogleCalendarGatewayCore`; it does not become a public CLI
 or library option.
 
 The `event create`, `event update`, and `event delete` dispatch path first loads
 and validates configuration exactly as production does, then passes that
-loaded `CalendarGatewayConfig` to the stored factory. The resulting service is
+loaded `GoogleCalendarGatewayConfig` to the stored factory. The resulting service is
 passed into a shared event-command handler. The handler has no fallback that
-constructs `CalendarGatewayService` or `GoogleCalendarLiveClient` internally.
+constructs `GoogleCalendarGatewayService` or `GoogleCalendarLiveClient` internally.
 Parsing failures that occur before service creation retain the current CLI
 error path.
 
 Direct CLI tests construct a reference-type recording fake provider, then
-inject `{ CalendarGatewayService(config: $0, provider: recordingFake) }` into
-`CalendarGatewayCLI`. Each test invokes `run(arguments:environment:)` with the
+inject `{ GoogleCalendarGatewayService(config: $0, provider: recordingFake) }` into
+`GoogleCalendarGatewayCLI`. Each test invokes `run(arguments:environment:)` with the
 real `event create`, `event update`, or `event delete` arguments and a temporary
 local config, decodes stdout, and asserts both the preview contract and zero
 create/update/delete calls on the same recording fake. This seam tests the
 complete CLI parser-to-service route without a token store, OAuth credential,
-network call, or live provider mutation. Production `CalendarGatewayCLI()` and
+network call, or live provider mutation. Production `GoogleCalendarGatewayCLI()` and
 `Sources/AppCLI/main.swift` remain unchanged at their call sites.
 
 ## Compatibility And Boundaries
@@ -513,7 +513,7 @@ network call, or live provider mutation. Production `CalendarGatewayCLI()` and
 - Swift files touched during implementation remain below 1000 lines. Because
   the current core and GraphQL files are already close to that limit, mutation
   result and adapter responsibilities should be split into cohesive files
-  inside the existing `CalendarGatewayCore` target as needed.
+  inside the existing `GoogleCalendarGatewayCore` target as needed.
 - Tests use fake providers only. No live OAuth credentials or calendar writes
   are permitted, and secret/token values must never appear in previews,
   diagnostics, fixtures, or logs.
@@ -556,6 +556,6 @@ git status --short
 
 The final status must show only in-scope paths under `Sources/`, `Tests/`,
 `design-docs/specs/`, and the resolved-decision file
-`design-docs/user-qa/pending-calendar-gateway-decisions.md`. The implementation
+`design-docs/user-qa/pending-google-calendar-gateway-decisions.md`. The implementation
 workflow creates one focused local commit after review and successful
 verification and must not push it.

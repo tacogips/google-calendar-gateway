@@ -3,24 +3,29 @@
 import PackageDescription
 
 let package = Package(
-  name: "calendar-gateway",
+  name: "google-calendar-gateway",
   platforms: [
     .macOS(.v14)
   ],
   products: [
-    .library(name: "CalendarGatewayCore", targets: ["CalendarGatewayCore"]),
-    .executable(name: "calendar-gateway", targets: ["CalendarGatewayCLI"])
+    .library(name: "GoogleCalendarGatewayCore", targets: ["GoogleCalendarGatewayCore"]),
+    .executable(name: "google-calendar-gateway-reader", targets: ["GoogleCalendarGatewayReader"]),
+    .executable(name: "google-calendar-gateway-writer", targets: ["GoogleCalendarGatewayWriter"])
   ],
   targets: [
-    .target(name: "CalendarGatewayCore"),
+    .target(name: "GoogleCalendarGatewayCore"),
     .executableTarget(
-      name: "CalendarGatewayCLI",
-      dependencies: ["CalendarGatewayCore"],
-      path: "Sources/AppCLI"
+      name: "GoogleCalendarGatewayReader",
+      dependencies: ["GoogleCalendarGatewayCore"],
+      path: "Sources/GoogleCalendarGatewayReader"
+    ),
+    .executableTarget(
+      name: "GoogleCalendarGatewayWriter",
+      dependencies: ["GoogleCalendarGatewayCore"]
     ),
     .testTarget(
-      name: "CalendarGatewayCoreTests",
-      dependencies: ["CalendarGatewayCore"],
+      name: "GoogleCalendarGatewayCoreTests",
+      dependencies: ["GoogleCalendarGatewayCore"],
       path: "Tests/AppCoreTests"
     )
   ],

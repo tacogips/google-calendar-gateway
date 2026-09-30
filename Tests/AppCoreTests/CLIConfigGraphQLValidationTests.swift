@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import CalendarGatewayCore
+@testable import GoogleCalendarGatewayCore
 
 @Test func configValidationAcceptsEnvBackedCredentialFiles() throws {
   let paths = temporaryConfigPaths()
@@ -9,12 +9,12 @@ import Testing
   }
   try writeConfig(paths: paths)
 
-  let result = CalendarGatewayCLI().run(
+  let result = GoogleCalendarGatewayCLI().run(
     arguments: ["--config", paths.config, "config", "validate"],
     environment: env(paths: paths)
   )
 
-  #expect(result.exitCode == CalendarGatewayExitCode.success.rawValue)
+  #expect(result.exitCode == GoogleCalendarGatewayExitCode.success.rawValue)
   #expect(result.stdout.contains("\"ok\":true"))
 }
 
@@ -25,7 +25,7 @@ import Testing
   }
   try writeConfig(paths: paths)
 
-  let result = CalendarGatewayCLI().run(
+  let result = GoogleCalendarGatewayCLI().run(
     arguments: [
       "--config", paths.config,
       "graphql",
@@ -34,7 +34,7 @@ import Testing
     environment: env(paths: paths)
   )
 
-  #expect(result.exitCode == CalendarGatewayExitCode.success.rawValue)
+  #expect(result.exitCode == GoogleCalendarGatewayExitCode.success.rawValue)
   #expect(result.stdout.contains("\"id\":\"personal\""))
   #expect(result.stdout.contains("\"displayName\":\"Personal\""))
   #expect(result.stdout.contains("\"provider\":\"GOOGLE\""))
@@ -50,7 +50,7 @@ import Testing
   let variablesPath = URL(fileURLWithPath: paths.root).appendingPathComponent("variables.json").path
   try "{}".write(toFile: variablesPath, atomically: true, encoding: .utf8)
 
-  let result = CalendarGatewayCLI().run(
+  let result = GoogleCalendarGatewayCLI().run(
     arguments: [
       "--config", paths.config,
       "graphql",
@@ -60,7 +60,7 @@ import Testing
     environment: env(paths: paths)
   )
 
-  #expect(result.exitCode == CalendarGatewayExitCode.success.rawValue)
+  #expect(result.exitCode == GoogleCalendarGatewayExitCode.success.rawValue)
   #expect(result.stdout.contains("\"id\":\"personal\""))
 }
 
@@ -71,7 +71,7 @@ import Testing
   }
   try writeConfig(paths: paths)
 
-  let result = CalendarGatewayCLI().run(
+  let result = GoogleCalendarGatewayCLI().run(
     arguments: [
       "--config", paths.config,
       "graphql",
@@ -81,7 +81,7 @@ import Testing
     environment: env(paths: paths)
   )
 
-  #expect(result.exitCode == CalendarGatewayExitCode.graphqlExecutionError.rawValue)
+  #expect(result.exitCode == GoogleCalendarGatewayExitCode.graphqlExecutionError.rawValue)
   #expect(result.stdout.contains("\"errors\""))
   #expect(result.stdout.contains("GraphQL variables are not supported yet"))
 }
@@ -93,7 +93,7 @@ import Testing
   }
   try writeConfig(paths: paths)
 
-  let result = CalendarGatewayCLI().run(
+  let result = GoogleCalendarGatewayCLI().run(
     arguments: [
       "--config", paths.config,
       "graphql",
@@ -103,7 +103,7 @@ import Testing
     environment: env(paths: paths)
   )
 
-  #expect(result.exitCode == CalendarGatewayExitCode.invalidCliUsage.rawValue)
+  #expect(result.exitCode == GoogleCalendarGatewayExitCode.invalidCliUsage.rawValue)
   #expect(result.stderr.contains("--variables must be a JSON object"))
 }
 
@@ -114,12 +114,12 @@ import Testing
   }
   try FileManager.default.createDirectory(atPath: paths.root, withIntermediateDirectories: true)
 
-  let result = CalendarGatewayCLI().run(
+  let result = GoogleCalendarGatewayCLI().run(
     arguments: ["config", "validate"],
     environment: ["XDG_CONFIG_HOME": paths.root]
   )
 
-  #expect(result.exitCode == CalendarGatewayExitCode.success.rawValue)
+  #expect(result.exitCode == GoogleCalendarGatewayExitCode.success.rawValue)
   #expect(result.stdout.contains("\"ok\":false"))
   #expect(result.stdout.contains("\"configFileExists\":false"))
   #expect(result.stdout.contains("\"usingDefaults\":true"))
@@ -149,7 +149,7 @@ import Testing
   calendar_id = "primary"
   """.write(toFile: traversalPaths.config, atomically: true, encoding: .utf8)
 
-  let traversal = CalendarGatewayCLI().run(
+  let traversal = GoogleCalendarGatewayCLI().run(
     arguments: ["--config", traversalPaths.config, "config", "validate"],
     environment: env(paths: traversalPaths)
   )
@@ -186,13 +186,13 @@ import Testing
   calendar_id = "primary"
   """.write(toFile: collisionPaths.config, atomically: true, encoding: .utf8)
 
-  let collision = CalendarGatewayCLI().run(
+  let collision = GoogleCalendarGatewayCLI().run(
     arguments: ["--config", collisionPaths.config, "config", "validate"],
     environment: env(paths: collisionPaths)
   )
 
-  #expect(traversal.exitCode == CalendarGatewayExitCode.configurationError.rawValue)
+  #expect(traversal.exitCode == GoogleCalendarGatewayExitCode.configurationError.rawValue)
   #expect(traversal.stderr.contains("may contain only ASCII letters"))
-  #expect(collision.exitCode == CalendarGatewayExitCode.configurationError.rawValue)
+  #expect(collision.exitCode == GoogleCalendarGatewayExitCode.configurationError.rawValue)
   #expect(collision.stderr.contains("normalized credentials.id contains a duplicate value"))
 }

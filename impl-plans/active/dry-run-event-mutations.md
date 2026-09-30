@@ -36,11 +36,11 @@ write. Existing callers remain live by default.
   - [Compatibility And Boundaries](../../design-docs/specs/design-dry-run-event-mutations.md#compatibility-and-boundaries)
     and [Acceptance And Verification](../../design-docs/specs/design-dry-run-event-mutations.md#acceptance-and-verification)
     for TASK-005 through TASK-008 regression, scope, and final acceptance gates.
-- `design-docs/specs/calendar-gateway.md`: gateway security and mutation
+- `design-docs/specs/google-calendar-gateway.md`: gateway security and mutation
   behavior; the deferred dry-run decision is resolved here.
 - `design-docs/specs/command.md`: GraphQL argument and singular `event` CLI
   command contract.
-- `design-docs/user-qa/pending-calendar-gateway-decisions.md`: records dry-run
+- `design-docs/user-qa/pending-google-calendar-gateway-decisions.md`: records dry-run
   as resolved and preserves existing `sendUpdates` behavior.
 
 Step 3 accepted the design with no findings or implementation-blocking user
@@ -60,12 +60,12 @@ boundary without returning to design review first.
 
 ## Constraints
 
-- Reuse the existing `CalendarGatewayCore` and `CalendarGatewayCLI` SwiftPM
+- Reuse the existing `GoogleCalendarGatewayCore` and `GoogleCalendarGatewayCLI` SwiftPM
   targets; add no module and preserve the macOS 14 boundary.
 - Keep every touched non-generated Swift file below 1000 lines. In particular,
-  do not grow `CalendarGatewayCore.swift` (currently 976 lines) into a larger
+  do not grow `GoogleCalendarGatewayCore.swift` (currently 976 lines) into a larger
   mixed-responsibility file; move event-mutation service behavior to a
-  cohesive extension file. Keep `CalendarGatewayGraphQL.swift` below the same
+  cohesive extension file. Keep `GoogleCalendarGatewayGraphQL.swift` below the same
   limit.
 - Keep provider protocol signatures unchanged. Providers never receive
   `dryRun` and never create previews.
@@ -97,8 +97,8 @@ boundary without returning to design review first.
 
 **Write Scope**:
 
-- Add `Sources/CalendarGatewayCore/CalendarEventMutation.swift`.
-- Modify `Sources/CalendarGatewayCore/CalendarModels.swift` only if a small,
+- Add `Sources/GoogleCalendarGatewayCore/CalendarEventMutation.swift`.
+- Modify `Sources/GoogleCalendarGatewayCore/CalendarModels.swift` only if a small,
   existing model projection must be exposed for the canonical preview; prefer
   keeping all new projection logic in the new mutation file.
 
@@ -132,11 +132,11 @@ boundary without returning to design review first.
 
 **Write Scope**:
 
-- Add `Sources/CalendarGatewayCore/CalendarGatewayService+EventMutations.swift`.
-- Modify `Sources/CalendarGatewayCore/CalendarGatewayCore.swift` to remove the
+- Add `Sources/GoogleCalendarGatewayCore/GoogleCalendarGatewayService+EventMutations.swift`.
+- Modify `Sources/GoogleCalendarGatewayCore/GoogleCalendarGatewayCore.swift` to remove the
   existing mutation implementations from the main service body and expose only
   the minimum module-internal helpers required by the extension.
-- Modify `Sources/CalendarGatewayCore/CalendarGatewayValidation.swift` only if
+- Modify `Sources/GoogleCalendarGatewayCore/GoogleCalendarGatewayValidation.swift` only if
   needed to reuse, not duplicate, normalized input behavior.
 
 **Deliverables**:
@@ -168,14 +168,14 @@ boundary without returning to design review first.
 - [x] Live callers compile unchanged and retain response shapes, provider
   arguments, errors, and effects.
 - [x] Provider protocol and adapters are unchanged.
-- [x] `CalendarGatewayCore.swift` and all new/touched Swift files are below
+- [x] `GoogleCalendarGatewayCore.swift` and all new/touched Swift files are below
   1000 lines.
 
 ### TASK-003: Add GraphQL Dry-Run Transport Support
 
 **Write Scope**:
 
-- Modify `Sources/CalendarGatewayCore/CalendarGatewayGraphQL.swift`.
+- Modify `Sources/GoogleCalendarGatewayCore/GoogleCalendarGatewayGraphQL.swift`.
 
 **Deliverables**:
 
@@ -193,22 +193,22 @@ boundary without returning to design review first.
 - [x] Omitted and false values retain live behavior.
 - [x] True values expose only the canonical service preview projection.
 - [x] GraphQL does not normalize inputs or reconstruct preview dictionaries.
-- [x] `CalendarGatewayGraphQL.swift` remains below 1000 lines.
+- [x] `GoogleCalendarGatewayGraphQL.swift` remains below 1000 lines.
 
 ### TASK-004: Add Direct Event CLI Commands And Service Injection
 
 **Write Scope**:
 
-- Modify `Sources/CalendarGatewayCore/CalendarGatewayCLI.swift`.
-- Modify `Sources/CalendarGatewayCore/CalendarGatewayCLIParsing.swift`.
-- Add `Sources/CalendarGatewayCore/CalendarGatewayCLIEventCommands.swift` if
+- Modify `Sources/GoogleCalendarGatewayCore/GoogleCalendarGatewayCLI.swift`.
+- Modify `Sources/GoogleCalendarGatewayCore/GoogleCalendarGatewayCLIParsing.swift`.
+- Add `Sources/GoogleCalendarGatewayCore/GoogleCalendarGatewayCLIEventCommands.swift` if
   needed to keep parsing, command adaptation, and the main CLI dispatcher
   cohesive and below 1000 lines.
 - Keep `Sources/AppCLI/main.swift` unchanged at its call site.
 
 **Deliverables**:
 
-- Add a stored `(CalendarGatewayConfig) -> CalendarGatewayService` factory,
+- Add a stored `(GoogleCalendarGatewayConfig) -> GoogleCalendarGatewayService` factory,
   preserve public `init()`, and add the module-internal injectable initializer
   accepted by the design.
 - Route singular `event create`, `event update`, and `event delete` through
@@ -230,7 +230,7 @@ boundary without returning to design review first.
 - [x] CLI inputs map one-to-one to canonical `CalendarEventInput` values.
 - [x] CLI contains no preview construction, duplicate normalization, provider
   calls, or live-service fallback in the event handler.
-- [x] Existing commands and public `CalendarGatewayCLI()` callers remain
+- [x] Existing commands and public `GoogleCalendarGatewayCLI()` callers remain
   source-compatible.
 - [x] All CLI Swift files remain below 1000 lines.
 
@@ -283,7 +283,7 @@ boundary without returning to design review first.
 **Deliverables**:
 
 - Invoke real `event create`, `event update`, and `event delete` arguments
-  through `CalendarGatewayCLI(serviceFactory:)` with temporary local config.
+  through `GoogleCalendarGatewayCLI(serviceFactory:)` with temporary local config.
 - Decode stdout and assert canonical previews plus zero create/update/delete
   calls on the same recording fake instance.
 - Cover bare/explicit `--dry-run`, JSON-array fields, false/omitted live
@@ -307,8 +307,8 @@ boundary without returning to design review first.
 
 - `design-docs/specs/design-dry-run-event-mutations.md`
 - `design-docs/specs/command.md`
-- `design-docs/specs/calendar-gateway.md`
-- `design-docs/user-qa/pending-calendar-gateway-decisions.md`
+- `design-docs/specs/google-calendar-gateway.md`
+- `design-docs/user-qa/pending-google-calendar-gateway-decisions.md`
 
 **Deliverables**:
 
@@ -390,7 +390,7 @@ TASK-001 -> TASK-002 -> TASK-003 -> TASK-005 -> TASK-006 -> TASK-008
 ## Parallelizable Tasks
 
 - **Group A after TASK-002**: TASK-003 and TASK-004. Source write scopes are
-  disjoint (`CalendarGatewayGraphQL.swift` versus CLI files).
+  disjoint (`GoogleCalendarGatewayGraphQL.swift` versus CLI files).
 - **Group B after TASK-003 and TASK-004**: TASK-005 and TASK-007 may proceed in
   parallel. Test and documentation write scopes are disjoint.
 - TASK-001, TASK-002, TASK-006, and TASK-008 are serial because they establish
@@ -426,7 +426,7 @@ Verification assertions beyond command exit status:
 - Preview JSON is canonical and deterministic, create/update use the full fixed
   schema, and delete has exactly eight keys.
 - Final status contains only in-scope `Sources/`, `Tests/`, accepted design
-  documents, `design-docs/user-qa/pending-calendar-gateway-decisions.md`, and
+  documents, `design-docs/user-qa/pending-google-calendar-gateway-decisions.md`, and
   this plan. No release/packaging path or secret material is present.
 - The staged-content safety review covers every path and patch line shown by
   the cached-diff commands and records `Pass` only when no credential, private
@@ -482,21 +482,21 @@ documentation is changed.
   decision. TASK-001 through TASK-008 remain incomplete and ready for the
   implementation step.
 - 2026-07-18: TASK-001 completed. Added
-  `Sources/CalendarGatewayCore/CalendarEventMutation.swift` with the accepted
+  `Sources/GoogleCalendarGatewayCore/CalendarEventMutation.swift` with the accepted
   public typed result and exact canonical preview projection. Verification:
   `swift test --filter DryRun` passed; deterministic sorted-key serialization
   and ordered arrays are covered. Findings: none. Remaining risk: final staged
   safety review and commit.
 - 2026-07-18: TASK-002 completed. Moved event mutations into
-  `Sources/CalendarGatewayCore/CalendarGatewayService+EventMutations.swift` and
-  narrowed `CalendarGatewayCore.swift`. Dry-run exits after write gating,
+  `Sources/GoogleCalendarGatewayCore/GoogleCalendarGatewayService+EventMutations.swift` and
+  narrowed `GoogleCalendarGatewayCore.swift`. Dry-run exits after write gating,
   validation, and normalization and before provider writes. Verification:
   focused and full tests passed. Findings: none. Remaining risk: final commit.
-- 2026-07-18: TASK-003 completed. `CalendarGatewayGraphQL.swift` accepts and
+- 2026-07-18: TASK-003 completed. `GoogleCalendarGatewayGraphQL.swift` accepts and
   forwards default-false Boolean `dryRun` for all three mutations. Verification:
   focused GraphQL true/false/omitted/non-Boolean tests passed. Findings: none.
 - 2026-07-18: TASK-004 completed. Added the injectable direct singular event
-  CLI adapter in `CalendarGatewayCLIEventCommands.swift` and updated CLI parsing,
+  CLI adapter in `GoogleCalendarGatewayCLIEventCommands.swift` and updated CLI parsing,
   dispatch, and help. Verification: focused CLI tests passed. Adversarial review
   fixed create's initially overbroad `--event-id` acceptance. Remaining risk:
   final staged safety review and commit.

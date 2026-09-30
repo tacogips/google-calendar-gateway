@@ -1,16 +1,16 @@
 import Testing
-@testable import CalendarGatewayCore
+@testable import GoogleCalendarGatewayCore
 
 @Test func globalHelpAndVersionRejectUnknownFlagsAndValues() {
-  let versionWithUnknown = CalendarGatewayCLI().run(arguments: ["--version", "--unknown"], environment: [:])
-  let helpWithUnknown = CalendarGatewayCLI().run(arguments: ["--help", "--unknown"], environment: [:])
-  let versionWithValue = CalendarGatewayCLI().run(arguments: ["--version=false"], environment: [:])
-  let helpWithValue = CalendarGatewayCLI().run(arguments: ["--help=false"], environment: [:])
+  let versionWithUnknown = GoogleCalendarGatewayCLI().run(arguments: ["--version", "--unknown"], environment: [:])
+  let helpWithUnknown = GoogleCalendarGatewayCLI().run(arguments: ["--help", "--unknown"], environment: [:])
+  let versionWithValue = GoogleCalendarGatewayCLI().run(arguments: ["--version=false"], environment: [:])
+  let helpWithValue = GoogleCalendarGatewayCLI().run(arguments: ["--help=false"], environment: [:])
 
-  #expect(versionWithUnknown.exitCode == CalendarGatewayExitCode.invalidCliUsage.rawValue)
-  #expect(helpWithUnknown.exitCode == CalendarGatewayExitCode.invalidCliUsage.rawValue)
-  #expect(versionWithValue.exitCode == CalendarGatewayExitCode.invalidCliUsage.rawValue)
-  #expect(helpWithValue.exitCode == CalendarGatewayExitCode.invalidCliUsage.rawValue)
+  #expect(versionWithUnknown.exitCode == GoogleCalendarGatewayExitCode.invalidCliUsage.rawValue)
+  #expect(helpWithUnknown.exitCode == GoogleCalendarGatewayExitCode.invalidCliUsage.rawValue)
+  #expect(versionWithValue.exitCode == GoogleCalendarGatewayExitCode.invalidCliUsage.rawValue)
+  #expect(helpWithValue.exitCode == GoogleCalendarGatewayExitCode.invalidCliUsage.rawValue)
   #expect(versionWithUnknown.stderr.contains("Unknown flag: --unknown"))
   #expect(helpWithUnknown.stderr.contains("Unknown flag: --unknown"))
   #expect(versionWithValue.stderr.contains("--version does not accept a value"))
@@ -18,8 +18,8 @@ import Testing
 }
 
 @Test func commandRejectsDuplicateFlagsBeforeRunning() {
-  let version = CalendarGatewayCLI().run(arguments: ["--version", "--version"], environment: [:])
-  let graphql = CalendarGatewayCLI().run(
+  let version = GoogleCalendarGatewayCLI().run(arguments: ["--version", "--version"], environment: [:])
+  let graphql = GoogleCalendarGatewayCLI().run(
     arguments: [
       "graphql",
       "--query", "{ calendars { id } }",
@@ -27,11 +27,11 @@ import Testing
     ],
     environment: [:]
   )
-  let cache = CalendarGatewayCLI().run(arguments: ["cache", "prune", "--all", "--all"], environment: [:])
+  let cache = GoogleCalendarGatewayCLI().run(arguments: ["cache", "prune", "--all", "--all"], environment: [:])
 
-  #expect(version.exitCode == CalendarGatewayExitCode.invalidCliUsage.rawValue)
-  #expect(graphql.exitCode == CalendarGatewayExitCode.invalidCliUsage.rawValue)
-  #expect(cache.exitCode == CalendarGatewayExitCode.invalidCliUsage.rawValue)
+  #expect(version.exitCode == GoogleCalendarGatewayExitCode.invalidCliUsage.rawValue)
+  #expect(graphql.exitCode == GoogleCalendarGatewayExitCode.invalidCliUsage.rawValue)
+  #expect(cache.exitCode == GoogleCalendarGatewayExitCode.invalidCliUsage.rawValue)
   #expect(version.stderr.contains("Duplicate flag: --version"))
   #expect(graphql.stderr.contains("Duplicate flag: --query"))
   #expect(cache.stderr.contains("Duplicate flag: --all"))
@@ -46,7 +46,7 @@ import Testing
 }
 
 @Test func timeoutSecondsFlagRequiresInteger() {
-  let result = CalendarGatewayCLI().run(
+  let result = GoogleCalendarGatewayCLI().run(
     arguments: [
       "auth",
       "login",
@@ -56,6 +56,6 @@ import Testing
     environment: [:]
   )
 
-  #expect(result.exitCode == CalendarGatewayExitCode.invalidCliUsage.rawValue)
+  #expect(result.exitCode == GoogleCalendarGatewayExitCode.invalidCliUsage.rawValue)
   #expect(result.stderr.contains("--timeout-seconds must be an integer between 1 and 3600"))
 }

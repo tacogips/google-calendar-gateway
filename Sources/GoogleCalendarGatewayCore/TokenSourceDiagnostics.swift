@@ -1,8 +1,8 @@
 import Foundation
 
 func calendarTokenSourceDetails(_ credential: CalendarCredentialConfig) -> [String: String] {
-  let jsonVariable = CalendarGatewayConfigLoader.getCredentialJSONEnvVarName(credentialId: credential.id, valueKey: "token_store_json")
-  let pathVariable = CalendarGatewayConfigLoader.getCredentialPathEnvVarName(credentialId: credential.id, pathKey: "token_store_path")
+  let jsonVariable = GoogleCalendarGatewayConfigLoader.getCredentialJSONEnvVarName(credentialId: credential.id, valueKey: "token_store_json")
+  let pathVariable = GoogleCalendarGatewayConfigLoader.getCredentialPathEnvVarName(credentialId: credential.id, pathKey: "token_store_path")
   var details = ["credentialId": credential.id]
   if credential.tokenStoreJSON != nil {
     details["tokenSource"] = "ENVIRONMENT_JSON"
@@ -18,10 +18,10 @@ func calendarTokenSourceDetails(_ credential: CalendarCredentialConfig) -> [Stri
   return details
 }
 
-func calendarTokenSourceError(_ error: CalendarGatewayError, credential: CalendarCredentialConfig) -> CalendarGatewayError {
+func calendarTokenSourceError(_ error: GoogleCalendarGatewayError, credential: CalendarCredentialConfig) -> GoogleCalendarGatewayError {
   let metadata = calendarTokenSourceDetails(credential)
   let summary = metadata.keys.sorted().compactMap { key in metadata[key].map { "\(key)=\($0)" } }.joined(separator: "; ")
-  return CalendarGatewayError(
+  return GoogleCalendarGatewayError(
     "\(error.message) (\(summary))", code: error.code, exitCode: error.exitCode,
     details: error.details.merging(metadata) { _, selected in selected }
   )

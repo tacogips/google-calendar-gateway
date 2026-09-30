@@ -1,6 +1,6 @@
 import Foundation
 
-public enum CalendarGatewayExitCode: Int32, Sendable {
+public enum GoogleCalendarGatewayExitCode: Int32, Sendable {
   case success = 0
   case generalError = 1
   case invalidCliUsage = 2
@@ -10,7 +10,7 @@ public enum CalendarGatewayExitCode: Int32, Sendable {
   case providerApiError = 6
 }
 
-public enum CalendarGatewayErrorCode: String, Sendable {
+public enum GoogleCalendarGatewayErrorCode: String, Sendable {
   case accountNotFound = "ACCOUNT_NOT_FOUND"
   case authRequired = "AUTH_REQUIRED"
   case configInvalid = "CONFIG_INVALID"
@@ -23,22 +23,22 @@ public enum CalendarGatewayErrorCode: String, Sendable {
   case writeDisabled = "WRITE_DISABLED"
 }
 
-public struct CalendarGatewayCommandResult: Sendable {
+public struct GoogleCalendarGatewayCommandResult: Sendable {
   public let exitCode: Int32
   public let stdout: String
   public let stderr: String
 }
 
-public struct CalendarGatewayError: Error, Sendable {
+public struct GoogleCalendarGatewayError: Error, Sendable {
   public let message: String
-  public let code: CalendarGatewayErrorCode
-  public let exitCode: CalendarGatewayExitCode
+  public let code: GoogleCalendarGatewayErrorCode
+  public let exitCode: GoogleCalendarGatewayExitCode
   public let details: [String: String]
 
   public init(
     _ message: String,
-    code: CalendarGatewayErrorCode,
-    exitCode: CalendarGatewayExitCode,
+    code: GoogleCalendarGatewayErrorCode,
+    exitCode: GoogleCalendarGatewayExitCode,
     details: [String: String] = [:]
   ) {
     self.message = message
@@ -148,7 +148,7 @@ public struct CalendarAccountConfig: Sendable {
   public let defaultTimeZone: String?
 }
 
-public struct CalendarGatewayConfig: Sendable {
+public struct GoogleCalendarGatewayConfig: Sendable {
   public let configPath: String
   public let storage: CalendarStorageConfig
   public let credentials: [CalendarCredentialConfig]
@@ -338,15 +338,15 @@ public protocol CalendarEventProvider {
   ) throws -> [String: Any]
 }
 
-public struct CalendarGatewayService {
-  public let config: CalendarGatewayConfig
+public struct GoogleCalendarGatewayService {
+  public let config: GoogleCalendarGatewayConfig
   let provider: any CalendarEventProvider
 
-  public init(config: CalendarGatewayConfig) {
+  public init(config: GoogleCalendarGatewayConfig) {
     self.init(config: config, provider: GoogleCalendarLiveClient())
   }
 
-  public init(config: CalendarGatewayConfig, provider: any CalendarEventProvider) {
+  public init(config: GoogleCalendarGatewayConfig, provider: any CalendarEventProvider) {
     self.config = config
     self.provider = provider
   }
@@ -415,7 +415,7 @@ public struct CalendarGatewayService {
     let account = try requireAccount(accountId)
     let credential = try requireCredential(account.credentialId)
     guard let eventId = nonBlank(eventId) else {
-      throw CalendarGatewayError(
+      throw GoogleCalendarGatewayError(
         "eventId must be a non-empty string",
         code: .invalidArgument,
         exitCode: .graphqlExecutionError
@@ -478,7 +478,7 @@ public struct CalendarGatewayService {
       do {
         try revokeProviderToken(token)
         providerRevoked = true
-      } catch let error as CalendarGatewayError {
+      } catch let error as GoogleCalendarGatewayError {
         providerRevocationError = error.message
       } catch {
         providerRevocationError = error.localizedDescription
@@ -495,7 +495,7 @@ public struct CalendarGatewayService {
       do {
         localTokenDeleted = try removeCalendarSecureTokenFile(at: credential.tokenStorePath)
       } catch {
-        throw CalendarGatewayError(
+        throw GoogleCalendarGatewayError(
           "Failed to delete token store for credential \(credential.id)",
           code: .authRequired,
           exitCode: .authenticationBootstrapError,
@@ -523,7 +523,7 @@ public struct CalendarGatewayService {
 
   func requireCredential(_ credentialId: String) throws -> CalendarCredentialConfig {
     guard let credential = config.credentials.first(where: { $0.id == credentialId }) else {
-      throw CalendarGatewayError(
+      throw GoogleCalendarGatewayError(
         "Unknown credential: \(credentialId)",
         code: .credentialNotFound,
         exitCode: .configurationError
@@ -535,7 +535,7 @@ public struct CalendarGatewayService {
   func requireWriteCredential(_ credentialId: String) throws -> CalendarCredentialConfig {
     let credential = try requireCredential(credentialId)
     guard credential.accessMode == .readWrite || credential.accessMode == .full else {
-      throw CalendarGatewayError(
+      throw GoogleCalendarGatewayError(
         "Google Calendar write operations require access_mode = \"read_write\" or \"full\"",
         code: .writeDisabled,
         exitCode: .graphqlExecutionError,
@@ -547,14 +547,14 @@ public struct CalendarGatewayService {
 
   func requireAccount(_ accountId: String) throws -> CalendarAccountConfig {
     guard nonBlank(accountId) != nil else {
-      throw CalendarGatewayError(
+      throw GoogleCalendarGatewayError(
         "accountId must be a non-empty string",
         code: .invalidArgument,
         exitCode: .graphqlExecutionError
       )
     }
     guard let account = config.accounts.first(where: { $0.id == accountId }) else {
-      throw CalendarGatewayError(
+      throw GoogleCalendarGatewayError(
         "Unknown account: \(accountId)",
         code: .accountNotFound,
         exitCode: .graphqlExecutionError
@@ -584,10 +584,10 @@ public struct CalendarGatewayService {
   }
 }
 
-public typealias CalendarGatewayClient = CalendarGatewayService
+public typealias GoogleCalendarGatewayClient = GoogleCalendarGatewayService
 
 public enum Version {
-  public static let current = "0.1.5"
+  public static let current = "0.1.6"
 }
 
 func validateSendUpdates(_ sendUpdates: String?) throws {
@@ -595,7 +595,7 @@ func validateSendUpdates(_ sendUpdates: String?) throws {
     return
   }
   guard ["all", "externalOnly", "none"].contains(sendUpdates) else {
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       "sendUpdates must be one of: all, externalOnly, none",
       code: .invalidArgument,
       exitCode: .graphqlExecutionError
@@ -608,7 +608,7 @@ func validateMaxResults(_ maxResults: Int?) throws {
     return
   }
   guard (1...2500).contains(maxResults) else {
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       "maxResults must be between 1 and 2500",
       code: .invalidArgument,
       exitCode: .graphqlExecutionError
@@ -619,28 +619,28 @@ func validateMaxResults(_ maxResults: Int?) throws {
 func validateEventSearch(_ search: CalendarEventSearch) throws {
   try validateProviderCalendarId(search.calendarId)
   if let timeMin = nonBlank(search.timeMin), !isRFC3339DateTime(timeMin) {
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       "timeMin must be an RFC 3339 date-time string",
       code: .invalidArgument,
       exitCode: .graphqlExecutionError
     )
   }
   if let timeMax = nonBlank(search.timeMax), !isRFC3339DateTime(timeMax) {
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       "timeMax must be an RFC 3339 date-time string",
       code: .invalidArgument,
       exitCode: .graphqlExecutionError
     )
   }
   if let updatedMin = nonBlank(search.updatedMin), !isRFC3339DateTime(updatedMin) {
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       "updatedMin must be an RFC 3339 date-time string",
       code: .invalidArgument,
       exitCode: .graphqlExecutionError
     )
   }
   if search.orderBy == .startTime, !search.singleEvents {
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       "orderBy = startTime requires singleEvents = true",
       code: .invalidArgument,
       exitCode: .graphqlExecutionError
@@ -657,14 +657,14 @@ func validateEventSearch(_ search: CalendarEventSearch) throws {
     search.orderBy.map { _ in "orderBy" }
   ].compactMap { $0 }
   if !incompatibleArguments.isEmpty {
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       "syncToken cannot be combined with: \(incompatibleArguments.joined(separator: ", "))",
       code: .invalidArgument,
       exitCode: .graphqlExecutionError
     )
   }
   if search.showDeleted == false {
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       "syncToken cannot be combined with showDeleted = false",
       code: .invalidArgument,
       exitCode: .graphqlExecutionError
@@ -702,7 +702,7 @@ func normalizedOptionalProviderCalendarId(_ calendarId: String?) throws -> Strin
     return nil
   }
   guard let normalized = nonBlank(calendarId) else {
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       "providerCalendarId must be a non-empty string",
       code: .invalidArgument,
       exitCode: .graphqlExecutionError
@@ -713,14 +713,14 @@ func normalizedOptionalProviderCalendarId(_ calendarId: String?) throws -> Strin
 
 func validateFreeBusyQuery(_ query: CalendarFreeBusyQuery, account: CalendarAccountConfig) throws -> CalendarFreeBusyQuery {
   guard isRFC3339DateTime(query.timeMin) else {
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       "freeBusy timeMin must be an RFC 3339 date-time string",
       code: .invalidArgument,
       exitCode: .graphqlExecutionError
     )
   }
   guard isRFC3339DateTime(query.timeMax) else {
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       "freeBusy timeMax must be an RFC 3339 date-time string",
       code: .invalidArgument,
       exitCode: .graphqlExecutionError
@@ -746,14 +746,14 @@ private func normalizedFreeBusyCalendarIds(_ calendarIds: [String], account: Cal
   }
   let normalized = calendarIds.compactMap(nonBlank)
   guard normalized.count == calendarIds.count else {
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       "freeBusy calendar IDs must be non-empty strings",
       code: .invalidArgument,
       exitCode: .graphqlExecutionError
     )
   }
   guard normalized.count <= 50 else {
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       "freeBusy accepts at most 50 calendar IDs",
       code: .invalidArgument,
       exitCode: .graphqlExecutionError
@@ -767,7 +767,7 @@ private func validateExpansionMax(_ value: Int?, name: String, range: ClosedRang
     return
   }
   guard range.contains(value) else {
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       "\(name) must be between \(range.lowerBound) and \(range.upperBound)",
       code: .invalidArgument,
       exitCode: .graphqlExecutionError
@@ -779,16 +779,16 @@ func validateEventInput(_ input: CalendarEventInput, requireStartEnd: Bool) thro
   try validateProviderCalendarId(input.calendarId)
   if requireStartEnd {
     guard nonBlank(input.start) != nil else {
-      throw CalendarGatewayError("createEvent requires start", code: .invalidArgument, exitCode: .graphqlExecutionError)
+      throw GoogleCalendarGatewayError("createEvent requires start", code: .invalidArgument, exitCode: .graphqlExecutionError)
     }
     guard nonBlank(input.end) != nil else {
-      throw CalendarGatewayError("createEvent requires end", code: .invalidArgument, exitCode: .graphqlExecutionError)
+      throw GoogleCalendarGatewayError("createEvent requires end", code: .invalidArgument, exitCode: .graphqlExecutionError)
     }
   }
   try validateEventDateValue(input.start, name: "start")
   try validateEventDateValue(input.end, name: "end")
   if !eventInputContainsWritableField(input) {
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       "Event input must contain at least one writable field",
       code: .invalidArgument,
       exitCode: .graphqlExecutionError
@@ -796,7 +796,7 @@ func validateEventInput(_ input: CalendarEventInput, requireStartEnd: Bool) thro
   }
   for attendeeEmail in input.attendeeEmails {
     guard isValidAttendeeEmail(attendeeEmail) else {
-      throw CalendarGatewayError(
+      throw GoogleCalendarGatewayError(
         "attendeeEmails must contain non-empty email addresses",
         code: .invalidArgument,
         exitCode: .graphqlExecutionError
@@ -814,7 +814,7 @@ private func validateEventDateValue(_ value: String?, name: String) throws {
   }
   guard let value = nonBlank(value),
         isCalendarDate(value) || isRFC3339DateTime(value) else {
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       "\(name) must be an RFC 3339 date-time or YYYY-MM-DD date string",
       code: .invalidArgument,
       exitCode: .graphqlExecutionError
@@ -850,21 +850,21 @@ private func isValidAttendeeEmail(_ value: String) -> Bool {
 
 private func validateEventMetadataInput(_ input: CalendarEventInput) throws {
   if let colorId = input.colorId, nonBlank(colorId) == nil {
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       "colorId must be a non-empty string",
       code: .invalidArgument,
       exitCode: .graphqlExecutionError
     )
   }
   if let conferenceRequestId = input.conferenceRequestId, nonBlank(conferenceRequestId) == nil {
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       "conferenceRequestId must be a non-empty string",
       code: .invalidArgument,
       exitCode: .graphqlExecutionError
     )
   }
   if nonBlank(input.conferenceRequestId) != nil, !input.createConference {
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       "conferenceRequestId requires createConference = true",
       code: .invalidArgument,
       exitCode: .graphqlExecutionError
@@ -878,7 +878,7 @@ private func validateRecurrenceRules(_ input: CalendarEventInput) throws {
   }
   for rule in input.recurrenceRules {
     guard let rule = nonBlank(rule) else {
-      throw CalendarGatewayError(
+      throw GoogleCalendarGatewayError(
         "recurrenceRules must contain non-empty strings",
         code: .invalidArgument,
         exitCode: .graphqlExecutionError
@@ -886,7 +886,7 @@ private func validateRecurrenceRules(_ input: CalendarEventInput) throws {
     }
     let uppercasedRule = rule.uppercased()
     if uppercasedRule.hasPrefix("DTSTART") || uppercasedRule.hasPrefix("DTEND") {
-      throw CalendarGatewayError(
+      throw GoogleCalendarGatewayError(
         "recurrenceRules must not contain DTSTART or DTEND",
         code: .invalidArgument,
         exitCode: .graphqlExecutionError
@@ -895,7 +895,7 @@ private func validateRecurrenceRules(_ input: CalendarEventInput) throws {
   }
   if isTimedCalendarValue(input.start) || isTimedCalendarValue(input.end) {
     guard nonBlank(input.timeZone) != nil else {
-      throw CalendarGatewayError(
+      throw GoogleCalendarGatewayError(
         "Recurring timed events require timeZone",
         code: .invalidArgument,
         exitCode: .graphqlExecutionError
@@ -906,14 +906,14 @@ private func validateRecurrenceRules(_ input: CalendarEventInput) throws {
 
 private func validateReminderInput(_ input: CalendarEventInput) throws {
   if input.reminderUseDefault == true, !input.reminderOverrides.isEmpty {
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       "reminderUseDefault cannot be true when reminderOverrides are supplied",
       code: .invalidArgument,
       exitCode: .graphqlExecutionError
     )
   }
   guard input.reminderOverrides.count <= 5 else {
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       "reminderOverrides accepts at most 5 reminders",
       code: .invalidArgument,
       exitCode: .graphqlExecutionError
@@ -921,7 +921,7 @@ private func validateReminderInput(_ input: CalendarEventInput) throws {
   }
   for reminder in input.reminderOverrides {
     guard (0...40320).contains(reminder.minutes) else {
-      throw CalendarGatewayError(
+      throw GoogleCalendarGatewayError(
         "reminderOverrides minutes must be between 0 and 40320",
         code: .invalidArgument,
         exitCode: .graphqlExecutionError

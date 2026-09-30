@@ -28,7 +28,7 @@ struct GoogleCalendarOAuthBootstrapper {
   ) throws -> [String: Any] {
     guard credential.tokenStoreJSON == nil else {
       throw calendarTokenSourceError(
-        CalendarGatewayError("Inline token JSON is immutable", code: .invalidArgument, exitCode: .invalidCliUsage),
+        GoogleCalendarGatewayError("Inline token JSON is immutable", code: .invalidArgument, exitCode: .invalidCliUsage),
         credential: credential
       )
     }
@@ -277,7 +277,7 @@ private func openBrowser(_ url: URL) throws {
     try process.run()
     process.waitUntilExit()
   } catch {
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       "Failed to open browser for Google Calendar OAuth",
       code: .authRequired,
       exitCode: .authenticationBootstrapError,
@@ -285,7 +285,7 @@ private func openBrowser(_ url: URL) throws {
     )
   }
   guard process.terminationStatus == 0 else {
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       "Browser launch for Google Calendar OAuth failed",
       code: .authRequired,
       exitCode: .authenticationBootstrapError,
@@ -312,7 +312,7 @@ private func parseCallbackCode(request: String, expectedState: String, expectedP
     query[item.name] = item.value ?? ""
   }
   if let error = query["error"] {
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       "Google Calendar OAuth authorization failed",
       code: .authRequired,
       exitCode: .authenticationBootstrapError,
@@ -360,7 +360,7 @@ private func exchangeAuthorizationCode(
     throw authError("Google Calendar OAuth token response was not a JSON object")
   }
   guard let accessToken = nonBlank(object["access_token"] as? String) else {
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       "Google Calendar OAuth token response did not include an access token",
       code: .authRequired,
       exitCode: .authenticationBootstrapError
@@ -420,6 +420,6 @@ private func writeHTTPResponse(_ connection: Int32, status: String, body: String
   }
 }
 
-private func authError(_ message: String) -> CalendarGatewayError {
-  CalendarGatewayError(message, code: .authRequired, exitCode: .authenticationBootstrapError)
+private func authError(_ message: String) -> GoogleCalendarGatewayError {
+  GoogleCalendarGatewayError(message, code: .authRequired, exitCode: .authenticationBootstrapError)
 }

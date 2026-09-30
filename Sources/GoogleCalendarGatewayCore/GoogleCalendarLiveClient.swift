@@ -293,7 +293,7 @@ private func eventBodyData(input: CalendarEventInput, requireStartEnd: Bool) thr
   do {
     return try JSONSerialization.data(withJSONObject: body, options: [.sortedKeys])
   } catch {
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       "Failed to encode Google Calendar event body",
       code: .invalidArgument,
       exitCode: .graphqlExecutionError,
@@ -369,7 +369,7 @@ private func freeBusyBodyData(_ query: CalendarFreeBusyQuery) throws -> Data {
   do {
     return try JSONSerialization.data(withJSONObject: body, options: [.sortedKeys])
   } catch {
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       "Failed to encode Google Calendar free/busy body",
       code: .invalidArgument,
       exitCode: .graphqlExecutionError,
@@ -399,7 +399,7 @@ private func performGoogleCalendarJSONRequest(
   let response = try performGoogleCalendarHTTPRequest(request, context: context, failureKind: failureKind)
   let json = try JSONSerialization.jsonObject(with: response.data)
   guard let object = json as? [String: Any] else {
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       "Google Calendar response was not a JSON object",
       code: .providerApiError,
       exitCode: .providerApiError
@@ -410,7 +410,7 @@ private func performGoogleCalendarJSONRequest(
 
 private func requireURL(_ url: URL?) throws -> URL {
   guard let url else {
-    throw CalendarGatewayError("Invalid Google Calendar API URL", code: .invalidArgument, exitCode: .invalidCliUsage)
+    throw GoogleCalendarGatewayError("Invalid Google Calendar API URL", code: .invalidArgument, exitCode: .invalidCliUsage)
   }
   return url
 }
@@ -422,6 +422,6 @@ private func requireNonBlank(_ value: String?, name: String) throws -> String {
   return value
 }
 
-private func invalidEventInput(_ message: String) -> CalendarGatewayError {
-  CalendarGatewayError(message, code: .invalidArgument, exitCode: .graphqlExecutionError)
+private func invalidEventInput(_ message: String) -> GoogleCalendarGatewayError {
+  GoogleCalendarGatewayError(message, code: .invalidArgument, exitCode: .graphqlExecutionError)
 }

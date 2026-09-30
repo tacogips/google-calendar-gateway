@@ -1,53 +1,53 @@
 import Foundation
 import Testing
-@testable import CalendarGatewayCore
+@testable import GoogleCalendarGatewayCore
 
 @Test func helpUsesExecutableName() {
-  let result = CalendarGatewayCLI().run(arguments: ["--help"], environment: [:])
-  #expect(result.exitCode == CalendarGatewayExitCode.success.rawValue)
-  #expect(result.stdout.contains("calendar-gateway"))
+  let result = GoogleCalendarGatewayCLI().run(arguments: ["--help"], environment: [:])
+  #expect(result.exitCode == GoogleCalendarGatewayExitCode.success.rawValue)
+  #expect(result.stdout.contains("google-calendar-gateway"))
 }
 
 @Test func commandReportsVersion() {
-  let result = CalendarGatewayCLI().run(arguments: ["--version"], environment: [:])
-  #expect(result.exitCode == CalendarGatewayExitCode.success.rawValue)
+  let result = GoogleCalendarGatewayCLI().run(arguments: ["--version"], environment: [:])
+  #expect(result.exitCode == GoogleCalendarGatewayExitCode.success.rawValue)
   #expect(result.stdout.trimmingCharacters(in: .whitespacesAndNewlines) == Version.current)
 }
 
 @Test func commandRejectsUnknownFlags() {
-  let root = CalendarGatewayCLI().run(arguments: ["--unknown"], environment: [:])
-  let config = CalendarGatewayCLI().run(arguments: ["config", "validate", "--unknown"], environment: [:])
-  let graphql = CalendarGatewayCLI().run(
+  let root = GoogleCalendarGatewayCLI().run(arguments: ["--unknown"], environment: [:])
+  let config = GoogleCalendarGatewayCLI().run(arguments: ["config", "validate", "--unknown"], environment: [:])
+  let graphql = GoogleCalendarGatewayCLI().run(
     arguments: ["graphql", "--query", "{ calendars { id } }", "--unknown"],
     environment: [:]
   )
 
-  #expect(root.exitCode == CalendarGatewayExitCode.invalidCliUsage.rawValue)
-  #expect(config.exitCode == CalendarGatewayExitCode.invalidCliUsage.rawValue)
-  #expect(graphql.exitCode == CalendarGatewayExitCode.invalidCliUsage.rawValue)
+  #expect(root.exitCode == GoogleCalendarGatewayExitCode.invalidCliUsage.rawValue)
+  #expect(config.exitCode == GoogleCalendarGatewayExitCode.invalidCliUsage.rawValue)
+  #expect(graphql.exitCode == GoogleCalendarGatewayExitCode.invalidCliUsage.rawValue)
   #expect(root.stderr.contains("Unknown flag: --unknown"))
   #expect(config.stderr.contains("Unknown flag: --unknown"))
   #expect(graphql.stderr.contains("Unknown flag: --unknown"))
 }
 
 @Test func commandRejectsUnexpectedPositionalArguments() {
-  let config = CalendarGatewayCLI().run(arguments: ["config", "validate", "extra"], environment: [:])
-  let graphql = CalendarGatewayCLI().run(
+  let config = GoogleCalendarGatewayCLI().run(arguments: ["config", "validate", "extra"], environment: [:])
+  let graphql = GoogleCalendarGatewayCLI().run(
     arguments: ["graphql", "extra", "--query", "{ calendars { id } }"],
     environment: [:]
   )
-  let cache = CalendarGatewayCLI().run(arguments: ["cache", "prune", "extra", "--all"], environment: [:])
+  let cache = GoogleCalendarGatewayCLI().run(arguments: ["cache", "prune", "extra", "--all"], environment: [:])
 
-  #expect(config.exitCode == CalendarGatewayExitCode.invalidCliUsage.rawValue)
-  #expect(graphql.exitCode == CalendarGatewayExitCode.invalidCliUsage.rawValue)
-  #expect(cache.exitCode == CalendarGatewayExitCode.invalidCliUsage.rawValue)
+  #expect(config.exitCode == GoogleCalendarGatewayExitCode.invalidCliUsage.rawValue)
+  #expect(graphql.exitCode == GoogleCalendarGatewayExitCode.invalidCliUsage.rawValue)
+  #expect(cache.exitCode == GoogleCalendarGatewayExitCode.invalidCliUsage.rawValue)
   #expect(config.stderr.contains("Unexpected argument: extra"))
   #expect(graphql.stderr.contains("Unexpected argument: extra"))
   #expect(cache.stderr.contains("Unexpected argument: extra"))
 }
 
 @Test func serviceExposesTypedCalendarInfo() {
-  let calendars = CalendarGatewayClient(config: testConfig()).calendars()
+  let calendars = GoogleCalendarGatewayClient(config: testConfig()).calendars()
 
   #expect(calendars.count == 1)
   #expect(calendars[0].id == "personal")
@@ -57,7 +57,7 @@ import Testing
 }
 
 @Test func serviceUsesInjectedProviderForCalendarDiscovery() throws {
-  let calendars = try CalendarGatewayClient(
+  let calendars = try GoogleCalendarGatewayClient(
     config: testConfig(),
     provider: FakeCalendarProvider()
   ).listProviderCalendars(credentialId: "google-personal")
@@ -71,7 +71,7 @@ import Testing
 
 @Test func graphQLReturnsProviderCalendars() throws {
   let result = try executeCalendarGraphQL(
-    service: CalendarGatewayService(config: testConfig(), provider: FakeCalendarProvider()),
+    service: GoogleCalendarGatewayService(config: testConfig(), provider: FakeCalendarProvider()),
     query: "{ providerCalendars(credentialId: \"google-personal\") { id summary isPrimary provider { fake { credentialId } } } }"
   )
 
@@ -94,12 +94,12 @@ import Testing
   }
   try writeConfig(paths: paths, accessMode: "read_write")
 
-  let result = CalendarGatewayCLI().run(
+  let result = GoogleCalendarGatewayCLI().run(
     arguments: ["--config", paths.config, "auth", "status", "--credential", "google-personal"],
     environment: env(paths: paths)
   )
 
-  #expect(result.exitCode == CalendarGatewayExitCode.success.rawValue)
+  #expect(result.exitCode == GoogleCalendarGatewayExitCode.success.rawValue)
   #expect(result.stdout.contains("\"state\":\"SCOPE_MISMATCH\""))
 }
 
@@ -113,12 +113,12 @@ import Testing
   {"accessMode":"read","accessToken":"test-token","refreshToken":"refresh","expiresAt":"2099-01-01T00:00:00Z","scope":"https://www.googleapis.com/auth/calendar.events.readonly"}
   """.write(toFile: paths.token, atomically: true, encoding: .utf8)
 
-  let result = CalendarGatewayCLI().run(
+  let result = GoogleCalendarGatewayCLI().run(
     arguments: ["--config", paths.config, "auth", "status", "--credential", "google-personal"],
     environment: env(paths: paths)
   )
 
-  #expect(result.exitCode == CalendarGatewayExitCode.success.rawValue)
+  #expect(result.exitCode == GoogleCalendarGatewayExitCode.success.rawValue)
   #expect(result.stdout.contains("\"state\":\"SCOPE_MISMATCH\""))
 }
 
@@ -130,7 +130,7 @@ import Testing
   try writeConfig(paths: paths)
   try FileManager.default.removeItem(atPath: paths.token)
 
-  let result = CalendarGatewayCLI().run(
+  let result = GoogleCalendarGatewayCLI().run(
     arguments: [
       "--config", paths.config,
       "graphql",
@@ -139,14 +139,14 @@ import Testing
     environment: env(paths: paths)
   )
 
-  #expect(result.exitCode == CalendarGatewayExitCode.providerApiError.rawValue)
+  #expect(result.exitCode == GoogleCalendarGatewayExitCode.providerApiError.rawValue)
   #expect(result.stdout.contains("\"errors\""))
   #expect(result.stdout.contains("Calendar authentication is required"))
 }
 
 @Test func serviceUsesInjectedProviderForEventQueries() throws {
   let provider = FakeCalendarProvider()
-  let result = try CalendarGatewayService(config: testConfig(), provider: provider).listEvents(
+  let result = try GoogleCalendarGatewayService(config: testConfig(), provider: provider).listEvents(
     search: CalendarEventSearch(accountId: "personal", timeMin: "2026-07-01T00:00:00Z")
   )
 
@@ -157,7 +157,7 @@ import Testing
 }
 
 @Test func serviceExposesTypedCalendarEventConnection() throws {
-  let connection = try CalendarGatewayService(config: testConfig(), provider: FakeCalendarProvider()).searchEvents(
+  let connection = try GoogleCalendarGatewayService(config: testConfig(), provider: FakeCalendarProvider()).searchEvents(
     search: CalendarEventSearch(accountId: "personal")
   )
 
@@ -169,7 +169,7 @@ import Testing
 
 @Test func graphQLSupportsIncrementalEventSyncArguments() throws {
   let result = try executeCalendarGraphQL(
-    service: CalendarGatewayService(config: testConfig(), provider: FakeCalendarProvider()),
+    service: GoogleCalendarGatewayService(config: testConfig(), provider: FakeCalendarProvider()),
     query: """
     { events(
       calendarId: "personal",
@@ -196,7 +196,7 @@ import Testing
 
 @Test func graphQLSupportsUpdatedEventSearchArguments() throws {
   let result = try executeCalendarGraphQL(
-    service: CalendarGatewayService(config: testConfig(), provider: FakeCalendarProvider()),
+    service: GoogleCalendarGatewayService(config: testConfig(), provider: FakeCalendarProvider()),
     query: """
     { events(
       calendarId: "personal",
@@ -223,7 +223,7 @@ import Testing
 
 @Test func graphQLAcceptsFractionalSecondDateTimes() throws {
   let result = try executeCalendarGraphQL(
-    service: CalendarGatewayService(config: testConfig(), provider: FakeCalendarProvider()),
+    service: GoogleCalendarGatewayService(config: testConfig(), provider: FakeCalendarProvider()),
     query: """
     { events(
       calendarId: "personal",
@@ -239,13 +239,13 @@ import Testing
 
 @Test func eventSyncTokenRejectsIncompatibleSearchArguments() throws {
   let withTimeMin = try executeCalendarGraphQL(
-    service: CalendarGatewayService(config: testConfig(), provider: ThrowingReadProvider()),
+    service: GoogleCalendarGatewayService(config: testConfig(), provider: ThrowingReadProvider()),
     query: """
     { events(calendarId: "personal", syncToken: "sync-1", timeMin: "2026-07-01T00:00:00Z") { events { id } } }
     """
   )
   let withShowDeletedFalse = try executeCalendarGraphQL(
-    service: CalendarGatewayService(config: testConfig(), provider: ThrowingReadProvider()),
+    service: GoogleCalendarGatewayService(config: testConfig(), provider: ThrowingReadProvider()),
     query: """
     { events(calendarId: "personal", syncToken: "sync-1", showDeleted: false) { events { id } } }
     """
@@ -261,13 +261,13 @@ import Testing
 
 @Test func eventSearchRejectsInvalidUpdatedMinAndOrderBy() throws {
   let invalidUpdatedMin = try executeCalendarGraphQL(
-    service: CalendarGatewayService(config: testConfig(), provider: FakeCalendarProvider()),
+    service: GoogleCalendarGatewayService(config: testConfig(), provider: FakeCalendarProvider()),
     query: """
     { events(calendarId: "personal", updatedMin: "yesterday") { events { id } } }
     """
   )
   let invalidOrderBy = try executeCalendarGraphQL(
-    service: CalendarGatewayService(config: testConfig(), provider: FakeCalendarProvider()),
+    service: GoogleCalendarGatewayService(config: testConfig(), provider: FakeCalendarProvider()),
     query: """
     { events(calendarId: "personal", orderBy: "summary") { events { id } } }
     """
@@ -280,7 +280,7 @@ import Testing
 }
 
 @Test func serviceExposesTypedFreeBusyResponse() throws {
-  let response = try CalendarGatewayService(config: testConfig(), provider: FakeCalendarProvider()).queryFreeBusy(
+  let response = try GoogleCalendarGatewayService(config: testConfig(), provider: FakeCalendarProvider()).queryFreeBusy(
     query: CalendarFreeBusyQuery(
       accountId: "personal",
       calendarIds: ["primary", "team@example.com"],
@@ -297,7 +297,7 @@ import Testing
 
 @Test func graphQLReturnsProjectedFreeBusy() throws {
   let result = try executeCalendarGraphQL(
-    service: CalendarGatewayService(config: testConfig(), provider: FakeCalendarProvider()),
+    service: GoogleCalendarGatewayService(config: testConfig(), provider: FakeCalendarProvider()),
     query: """
     { freeBusy(
       calendarId: "personal",
@@ -322,7 +322,7 @@ import Testing
 }
 
 @Test func freeBusyDefaultsToConfiguredProviderCalendar() throws {
-  let response = try CalendarGatewayService(config: testConfig(), provider: FakeCalendarProvider()).queryFreeBusy(
+  let response = try GoogleCalendarGatewayService(config: testConfig(), provider: FakeCalendarProvider()).queryFreeBusy(
     query: CalendarFreeBusyQuery(
       accountId: "personal",
       timeMin: "2026-07-01T00:00:00Z",
@@ -335,13 +335,13 @@ import Testing
 
 @Test func freeBusyRejectsInvalidDateTimeAndExpansionMax() throws {
   let invalidDate = try executeCalendarGraphQL(
-    service: CalendarGatewayService(config: testConfig(), provider: FakeCalendarProvider()),
+    service: GoogleCalendarGatewayService(config: testConfig(), provider: FakeCalendarProvider()),
     query: """
     { freeBusy(calendarId: "personal", timeMin: "tomorrow", timeMax: "2026-07-02T00:00:00Z") { calendars { id } } }
     """
   )
   let invalidExpansion = try executeCalendarGraphQL(
-    service: CalendarGatewayService(config: testConfig(), provider: FakeCalendarProvider()),
+    service: GoogleCalendarGatewayService(config: testConfig(), provider: FakeCalendarProvider()),
     query: """
     { freeBusy(
       calendarId: "personal",
@@ -361,7 +361,7 @@ import Testing
 
 @Test func graphQLRejectsMultipleRootFields() throws {
   let result = try executeCalendarGraphQL(
-    service: CalendarGatewayService(config: testConfig(), provider: FakeCalendarProvider()),
+    service: GoogleCalendarGatewayService(config: testConfig(), provider: FakeCalendarProvider()),
     query: "{ calendars { id } providerCalendars(credentialId: \"google-personal\") { id } }"
   )
 
@@ -372,7 +372,7 @@ import Testing
 
 @Test func graphQLArgumentLookupIgnoresArgumentNamesInsideStrings() throws {
   let result = try executeCalendarGraphQL(
-    service: CalendarGatewayService(config: testConfig(accessMode: .readWrite), provider: FakeCalendarProvider()),
+    service: GoogleCalendarGatewayService(config: testConfig(accessMode: .readWrite), provider: FakeCalendarProvider()),
     query: """
     mutation {
       createEvent(
@@ -393,7 +393,7 @@ import Testing
 
 @Test func graphQLFieldLookupIgnoresDelimitersInsideStrings() throws {
   let result = try executeCalendarGraphQL(
-    service: CalendarGatewayService(config: testConfig(accessMode: .readWrite), provider: FakeCalendarProvider()),
+    service: GoogleCalendarGatewayService(config: testConfig(accessMode: .readWrite), provider: FakeCalendarProvider()),
     query: """
     mutation {
       createEvent(
@@ -414,7 +414,7 @@ import Testing
 
 @Test func graphQLProjectsSelectedEventFields() throws {
   let result = try executeCalendarGraphQL(
-    service: CalendarGatewayService(config: testConfig(), provider: FakeCalendarProvider()),
+    service: GoogleCalendarGatewayService(config: testConfig(), provider: FakeCalendarProvider()),
     query: "{ events(calendarId: \"personal\") { events { id start { dateTime } } nextCursor nextPageToken } }"
   )
 
@@ -436,7 +436,7 @@ import Testing
 @Test func graphQLAcceptsOpaqueEventCursor() throws {
   let cursor = calendarEventCursor(pageToken: "next-page")
   let result = try executeCalendarGraphQL(
-    service: CalendarGatewayService(config: testConfig(), provider: FakeCalendarProvider()),
+    service: GoogleCalendarGatewayService(config: testConfig(), provider: FakeCalendarProvider()),
     query: "{ events(calendarId: \"personal\", cursor: \"\(cursor)\") { events { id } nextCursor } }"
   )
 
@@ -448,7 +448,7 @@ import Testing
 
 @Test func graphQLRejectsInvalidOpaqueEventCursor() throws {
   let result = try executeCalendarGraphQL(
-    service: CalendarGatewayService(config: testConfig(), provider: FakeCalendarProvider()),
+    service: GoogleCalendarGatewayService(config: testConfig(), provider: FakeCalendarProvider()),
     query: "{ events(calendarId: \"personal\", cursor: \"not-a-cursor\") { events { id } } }"
   )
 
@@ -462,14 +462,14 @@ import Testing
   let cursor = calendarEventCursor(pageToken: "provider-token")
 
   #expect(try pageTokenFromCalendarEventCursor(cursor) == "provider-token")
-  #expect(throws: CalendarGatewayError.self) {
+  #expect(throws: GoogleCalendarGatewayError.self) {
     _ = try pageTokenFromCalendarEventCursor("bad")
   }
 }
 
 @Test func graphQLRejectsInvalidEventSearchDateTime() throws {
   let result = try executeCalendarGraphQL(
-    service: CalendarGatewayService(config: testConfig(), provider: FakeCalendarProvider()),
+    service: GoogleCalendarGatewayService(config: testConfig(), provider: FakeCalendarProvider()),
     query: "{ events(calendarId: \"personal\", timeMin: \"next week\") { events { id } } }"
   )
 
@@ -481,11 +481,11 @@ import Testing
 
 @Test func graphQLRejectsOutOfRangeMaxResults() throws {
   let tooLow = try executeCalendarGraphQL(
-    service: CalendarGatewayService(config: testConfig(), provider: FakeCalendarProvider()),
+    service: GoogleCalendarGatewayService(config: testConfig(), provider: FakeCalendarProvider()),
     query: "{ events(calendarId: \"personal\", maxResults: 0) { events { id } } }"
   )
   let tooHigh = try executeCalendarGraphQL(
-    service: CalendarGatewayService(config: testConfig(), provider: FakeCalendarProvider()),
+    service: GoogleCalendarGatewayService(config: testConfig(), provider: FakeCalendarProvider()),
     query: "{ events(calendarId: \"personal\", maxResults: 2501) { events { id } } }"
   )
 
@@ -498,7 +498,7 @@ import Testing
 
 @Test func graphQLAcceptsMaxResultsUpperBound() throws {
   let result = try executeCalendarGraphQL(
-    service: CalendarGatewayService(config: testConfig(), provider: FakeCalendarProvider()),
+    service: GoogleCalendarGatewayService(config: testConfig(), provider: FakeCalendarProvider()),
     query: "{ events(calendarId: \"personal\", maxResults: 2500) { events { id } } }"
   )
 
@@ -507,7 +507,7 @@ import Testing
 
 @Test func graphQLMapsProviderErrorsFromInjectedProvider() throws {
   let result = try executeCalendarGraphQL(
-    service: CalendarGatewayService(config: testConfig(), provider: ThrowingReadProvider()),
+    service: GoogleCalendarGatewayService(config: testConfig(), provider: ThrowingReadProvider()),
     query: "{ events(calendarId: \"personal\") { events { id } } }"
   )
 
@@ -517,13 +517,13 @@ import Testing
   let firstError = try #require(errors.first)
   let extensions = try #require(firstError["extensions"] as? [String: Any])
   #expect(firstError["message"] as? String == "Google Calendar rate limit exceeded")
-  #expect(extensions["code"] as? String == CalendarGatewayErrorCode.providerRateLimited.rawValue)
-  #expect(extensions["exitCode"] as? Int32 == CalendarGatewayExitCode.providerApiError.rawValue)
+  #expect(extensions["code"] as? String == GoogleCalendarGatewayErrorCode.providerRateLimited.rawValue)
+  #expect(extensions["exitCode"] as? Int32 == GoogleCalendarGatewayExitCode.providerApiError.rawValue)
 }
 
 @Test func graphQLMapsConfigurationErrorsIntoErrorEnvelope() throws {
   let result = try executeCalendarGraphQL(
-    service: CalendarGatewayService(config: testConfig(), provider: FakeCalendarProvider()),
+    service: GoogleCalendarGatewayService(config: testConfig(), provider: FakeCalendarProvider()),
     query: "{ providerCalendars(credentialId: \"missing\") { id } }"
   )
 
@@ -532,7 +532,7 @@ import Testing
   let errors = try #require(result.body["errors"] as? [[String: Any]])
   let extensions = try #require(errors.first?["extensions"] as? [String: Any])
   #expect(errors.first?["message"] as? String == "Unknown credential: missing")
-  #expect(extensions["code"] as? String == CalendarGatewayErrorCode.credentialNotFound.rawValue)
+  #expect(extensions["code"] as? String == GoogleCalendarGatewayErrorCode.credentialNotFound.rawValue)
 }
 
 @Test func googleHTTPErrorMappingUsesActionableCodes() {
@@ -557,7 +557,7 @@ import Testing
 
 @Test func createEventGraphQLRejectsInvalidDateTime() throws {
   let result = try executeCalendarGraphQL(
-    service: CalendarGatewayService(config: testConfig(accessMode: .readWrite), provider: FakeCalendarProvider()),
+    service: GoogleCalendarGatewayService(config: testConfig(accessMode: .readWrite), provider: FakeCalendarProvider()),
     query: """
     mutation { createEvent(calendarId: "personal", summary: "Planning", start: "July 1", end: "2026-07-01T09:30:00Z") { id } }
     """
@@ -571,7 +571,7 @@ import Testing
 
 @Test func createEventGraphQLAcceptsAllDayDates() throws {
   let result = try executeCalendarGraphQL(
-    service: CalendarGatewayService(config: testConfig(accessMode: .readWrite), provider: FakeCalendarProvider()),
+    service: GoogleCalendarGatewayService(config: testConfig(accessMode: .readWrite), provider: FakeCalendarProvider()),
     query: """
     mutation { createEvent(calendarId: "personal", summary: "Holiday", start: "2026-07-01", end: "2026-07-02") { id summary } }
     """
@@ -586,7 +586,7 @@ import Testing
 
 @Test func serviceUsesInjectedProviderForWriteOperations() throws {
   let provider = FakeCalendarProvider()
-  let result = try CalendarGatewayService(
+  let result = try GoogleCalendarGatewayService(
     config: testConfig(accessMode: .readWrite),
     provider: provider
   ).createCalendarEvent(input: CalendarEventInput(
@@ -601,8 +601,8 @@ import Testing
 }
 
 @Test func serviceRejectsOutOfRangeMaxResultsBeforeProviderCall() throws {
-  let error = try requireCalendarGatewayError {
-    _ = try CalendarGatewayService(config: testConfig(), provider: ThrowingReadProvider()).searchEvents(
+  let error = try requireGoogleCalendarGatewayError {
+    _ = try GoogleCalendarGatewayService(config: testConfig(), provider: ThrowingReadProvider()).searchEvents(
       search: CalendarEventSearch(accountId: "personal", maxResults: 2501)
     )
   }
@@ -612,13 +612,13 @@ import Testing
 }
 
 @Test func serviceRejectsInvalidEventSearchDateTimesBeforeProviderCall() throws {
-  let invalidTimeMin = try requireCalendarGatewayError {
-    _ = try CalendarGatewayService(config: testConfig(), provider: ThrowingReadProvider()).searchEvents(
+  let invalidTimeMin = try requireGoogleCalendarGatewayError {
+    _ = try GoogleCalendarGatewayService(config: testConfig(), provider: ThrowingReadProvider()).searchEvents(
       search: CalendarEventSearch(accountId: "personal", timeMin: "next week")
     )
   }
-  let invalidTimeMax = try requireCalendarGatewayError {
-    _ = try CalendarGatewayService(config: testConfig(), provider: ThrowingReadProvider()).searchEvents(
+  let invalidTimeMax = try requireGoogleCalendarGatewayError {
+    _ = try GoogleCalendarGatewayService(config: testConfig(), provider: ThrowingReadProvider()).searchEvents(
       search: CalendarEventSearch(accountId: "personal", timeMax: "tomorrow")
     )
   }
@@ -630,8 +630,8 @@ import Testing
 }
 
 @Test func readOnlyCredentialRejectsWriteBeforeProviderCall() throws {
-  let error = try requireCalendarGatewayError {
-    _ = try CalendarGatewayService(
+  let error = try requireGoogleCalendarGatewayError {
+    _ = try GoogleCalendarGatewayService(
       config: testConfig(accessMode: .read),
       provider: FailingWriteProvider()
     ).createEvent(input: CalendarEventInput(
@@ -653,7 +653,7 @@ import Testing
   }
   try writeConfig(paths: paths)
 
-  let result = CalendarGatewayCLI().run(
+  let result = GoogleCalendarGatewayCLI(mode: .writer).run(
     arguments: [
       "--config", paths.config,
       "graphql",
@@ -665,13 +665,13 @@ import Testing
     environment: env(paths: paths)
   )
 
-  #expect(result.exitCode == CalendarGatewayExitCode.graphqlExecutionError.rawValue)
+  #expect(result.exitCode == GoogleCalendarGatewayExitCode.graphqlExecutionError.rawValue)
   #expect(result.stdout.contains("\"code\":\"WRITE_DISABLED\""))
 }
 
 @Test func serviceRejectsInvalidSendUpdatesBeforeProviderCall() throws {
-  let error = try requireCalendarGatewayError {
-    _ = try CalendarGatewayService(
+  let error = try requireGoogleCalendarGatewayError {
+    _ = try GoogleCalendarGatewayService(
       config: testConfig(accessMode: .readWrite),
       provider: FailingWriteProvider()
     ).createEvent(input: CalendarEventInput(
@@ -688,8 +688,8 @@ import Testing
 }
 
 @Test func createEventRequiresStartAndEndBeforeProviderCall() throws {
-  let error = try requireCalendarGatewayError {
-    _ = try CalendarGatewayService(
+  let error = try requireGoogleCalendarGatewayError {
+    _ = try GoogleCalendarGatewayService(
       config: testConfig(accessMode: .readWrite),
       provider: FailingWriteProvider()
     ).createEvent(input: CalendarEventInput(
@@ -704,8 +704,8 @@ import Testing
 }
 
 @Test func eventMutationRejectsInvalidDatesBeforeProviderCall() throws {
-  let invalidStart = try requireCalendarGatewayError {
-    _ = try CalendarGatewayService(
+  let invalidStart = try requireGoogleCalendarGatewayError {
+    _ = try GoogleCalendarGatewayService(
       config: testConfig(accessMode: .readWrite),
       provider: FailingWriteProvider()
     ).createEvent(input: CalendarEventInput(
@@ -715,8 +715,8 @@ import Testing
       end: "2026-07-01T09:30:00Z"
     ))
   }
-  let invalidEnd = try requireCalendarGatewayError {
-    _ = try CalendarGatewayService(
+  let invalidEnd = try requireGoogleCalendarGatewayError {
+    _ = try GoogleCalendarGatewayService(
       config: testConfig(accessMode: .readWrite),
       provider: FailingWriteProvider()
     ).updateEvent(input: CalendarEventInput(
@@ -733,8 +733,8 @@ import Testing
 }
 
 @Test func updateEventRequiresWritableFieldBeforeProviderCall() throws {
-  let error = try requireCalendarGatewayError {
-    _ = try CalendarGatewayService(
+  let error = try requireGoogleCalendarGatewayError {
+    _ = try GoogleCalendarGatewayService(
       config: testConfig(accessMode: .readWrite),
       provider: FailingWriteProvider()
     ).updateEvent(input: CalendarEventInput(
@@ -748,8 +748,8 @@ import Testing
 }
 
 @Test func createEventRejectsInvalidAttendeeEmailBeforeProviderCall() throws {
-  let error = try requireCalendarGatewayError {
-    _ = try CalendarGatewayService(
+  let error = try requireGoogleCalendarGatewayError {
+    _ = try GoogleCalendarGatewayService(
       config: testConfig(accessMode: .readWrite),
       provider: FailingWriteProvider()
     ).createEvent(input: CalendarEventInput(
@@ -767,7 +767,7 @@ import Testing
 
 @Test func createEventGraphQLRejectsInvalidSendUpdates() throws {
   let result = try executeCalendarGraphQL(
-    service: CalendarGatewayService(config: testConfig(accessMode: .readWrite), provider: FailingWriteProvider()),
+    service: GoogleCalendarGatewayService(config: testConfig(accessMode: .readWrite), provider: FailingWriteProvider()),
     query: """
     mutation { createEvent(calendarId: "personal", summary: "Planning", start: "2026-07-01T09:00:00Z", end: "2026-07-01T09:30:00Z", sendUpdates: "everyone") { id } }
     """
@@ -781,7 +781,7 @@ import Testing
 
 @Test func deleteEventGraphQLAcceptsValidSendUpdates() throws {
   let result = try executeCalendarGraphQL(
-    service: CalendarGatewayService(config: testConfig(accessMode: .readWrite), provider: FakeCalendarProvider()),
+    service: GoogleCalendarGatewayService(config: testConfig(accessMode: .readWrite), provider: FakeCalendarProvider()),
     query: """
     mutation { deleteEvent(calendarId: "personal", eventId: "event-1", sendUpdates: "externalOnly") { deleted sendUpdates } }
     """
@@ -795,8 +795,8 @@ import Testing
 }
 
 @Test func deleteEventRejectsBlankEventIdBeforeProviderCall() throws {
-  let error = try requireCalendarGatewayError {
-    _ = try CalendarGatewayService(
+  let error = try requireGoogleCalendarGatewayError {
+    _ = try GoogleCalendarGatewayService(
       config: testConfig(accessMode: .readWrite),
       provider: FailingWriteProvider()
     ).deleteEvent(accountId: "personal", eventId: " ")
@@ -835,7 +835,7 @@ import Testing
   }
   """)
 
-  let error = try requireCalendarGatewayError {
+  let error = try requireGoogleCalendarGatewayError {
     _ = try loadGoogleOAuthClient(credential: credential, use: .desktopLogin)
   }
 
@@ -843,7 +843,7 @@ import Testing
   #expect(error.exitCode == .authenticationBootstrapError)
 }
 
-@Test func authLoginRejectsWebOnlyClientBeforeBrowserLaunch() throws {
+@Test(arguments: [true, false]) func authLoginRejectsWebOnlyClientBeforeBrowserLaunch(explicitCredential: Bool) throws {
   let paths = temporaryConfigPaths()
   defer {
     try? FileManager.default.removeItem(atPath: paths.root)
@@ -853,12 +853,13 @@ import Testing
   {"web":{"client_id":"web-client-id","client_secret":"web-secret","token_uri":"https://tokens.example.test/token"}}
   """.write(toFile: paths.oauthClient, atomically: true, encoding: .utf8)
 
-  let result = CalendarGatewayCLI().run(
-    arguments: ["--config", paths.config, "auth", "login", "--credential", "google-personal"],
+  let result = GoogleCalendarGatewayCLI().run(
+    arguments: ["--config", paths.config, "auth", "login"]
+      + (explicitCredential ? ["--credential", "google-personal"] : []),
     environment: env(paths: paths)
   )
 
-  #expect(result.exitCode == CalendarGatewayExitCode.authenticationBootstrapError.rawValue)
+  #expect(result.exitCode == GoogleCalendarGatewayExitCode.authenticationBootstrapError.rawValue)
   #expect(result.stderr.contains("installed desktop client"))
   #expect(!result.stderr.contains("web-secret"))
 }
@@ -915,7 +916,7 @@ import Testing
   """
   let partialCredential = testCredential(tokenStoreJSON: partialToken, accessMode: .read)
 
-  let error = try requireCalendarGatewayError {
+  let error = try requireGoogleCalendarGatewayError {
     _ = try validGoogleCalendarAccessToken(credential: partialCredential, use: .read)
   }
   #expect(error.code == .authRequired)
@@ -944,19 +945,19 @@ import Testing
 }
 
 @Test func graphQLArgumentLookupDoesNotConfuseProviderCalendarId() throws {
-  let result = CalendarGatewayCLI().run(
+  let result = GoogleCalendarGatewayCLI().run(
     arguments: [
       "graphql",
       "--query",
       "{ events(providerCalendarId: \"primary\") { events { id } } }"
     ],
     environment: [
-      "CALENDAR_GATEWAY_CREDENTIAL_GOOGLE_PERSONAL_OAUTH_CLIENT_SECRET_JSON": "{}",
-      "CALENDAR_GATEWAY_CREDENTIAL_GOOGLE_PERSONAL_TOKEN_STORE_JSON": "{}"
+      "GOOGLE_CALENDAR_GATEWAY_CREDENTIAL_GOOGLE_PERSONAL_OAUTH_CLIENT_SECRET_JSON": "{}",
+      "GOOGLE_CALENDAR_GATEWAY_CREDENTIAL_GOOGLE_PERSONAL_TOKEN_STORE_JSON": "{}"
     ]
   )
 
-  #expect(result.exitCode == CalendarGatewayExitCode.graphqlExecutionError.rawValue)
+  #expect(result.exitCode == GoogleCalendarGatewayExitCode.graphqlExecutionError.rawValue)
   #expect(result.stdout.contains("Missing GraphQL argument: calendarId"))
 }
 

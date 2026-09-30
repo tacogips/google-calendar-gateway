@@ -1,7 +1,7 @@
 import Foundation
 import Darwin
 import Testing
-@testable import CalendarGatewayCore
+@testable import GoogleCalendarGatewayCore
 
 struct FakeCalendarProvider: CalendarEventProvider {
   func listCalendars(credential: CalendarCredentialConfig) throws -> [ProviderCalendarInfo] {
@@ -328,8 +328,8 @@ struct ThrowingReadProvider: CalendarEventProvider {
     throw rateLimitedError()
   }
 
-  private func rateLimitedError() -> CalendarGatewayError {
-    CalendarGatewayError(
+  private func rateLimitedError() -> GoogleCalendarGatewayError {
+    GoogleCalendarGatewayError(
       "Google Calendar rate limit exceeded",
       code: .providerRateLimited,
       exitCode: .providerApiError
@@ -347,7 +347,7 @@ struct TestConfigPaths {
 
 func temporaryConfigPaths() -> TestConfigPaths {
   let root = URL(fileURLWithPath: NSTemporaryDirectory())
-    .appendingPathComponent("calendar-gateway-tests-\(UUID().uuidString)", isDirectory: true)
+    .appendingPathComponent("google-calendar-gateway-tests-\(UUID().uuidString)", isDirectory: true)
   return TestConfigPaths(
     root: root.path,
     config: root.appendingPathComponent("config.toml").path,
@@ -388,21 +388,21 @@ func writeConfig(paths: TestConfigPaths, accessMode: String = "read") throws {
 
 func env(paths: TestConfigPaths) -> [String: String] {
   [
-    "CALENDAR_GATEWAY_CREDENTIAL_GOOGLE_PERSONAL_OAUTH_CLIENT_SECRET_PATH": paths.oauthClient,
-    "CALENDAR_GATEWAY_CREDENTIAL_GOOGLE_PERSONAL_TOKEN_STORE_PATH": paths.token
+    "GOOGLE_CALENDAR_GATEWAY_CREDENTIAL_GOOGLE_PERSONAL_OAUTH_CLIENT_SECRET_PATH": paths.oauthClient,
+    "GOOGLE_CALENDAR_GATEWAY_CREDENTIAL_GOOGLE_PERSONAL_TOKEN_STORE_PATH": paths.token
   ]
 }
 
-func requireCalendarGatewayError(_ operation: () throws -> Void) throws -> CalendarGatewayError {
+func requireGoogleCalendarGatewayError(_ operation: () throws -> Void) throws -> GoogleCalendarGatewayError {
   do {
     try operation()
-  } catch let error as CalendarGatewayError {
+  } catch let error as GoogleCalendarGatewayError {
     return error
   } catch {
     Issue.record("Unexpected error: \(error)")
   }
-  Issue.record("Expected CalendarGatewayError")
-  throw CalendarGatewayError("Expected test error", code: .invalidArgument, exitCode: .generalError)
+  Issue.record("Expected GoogleCalendarGatewayError")
+  throw GoogleCalendarGatewayError("Expected test error", code: .invalidArgument, exitCode: .generalError)
 }
 
 final class OneShotHTTPServer: @unchecked Sendable {
@@ -418,13 +418,13 @@ final class OneShotHTTPServer: @unchecked Sendable {
   init(path: String = "/token", responseBody: String) throws {
     let fd = socket(AF_INET, SOCK_STREAM, 0)
     guard fd >= 0 else {
-      throw CalendarGatewayError("Failed to create test HTTP socket", code: .providerApiError, exitCode: .providerApiError)
+      throw GoogleCalendarGatewayError("Failed to create test HTTP socket", code: .providerApiError, exitCode: .providerApiError)
     }
 
     var reuse: Int32 = 1
     guard setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &reuse, socklen_t(MemoryLayout<Int32>.size)) == 0 else {
       close(fd)
-      throw CalendarGatewayError("Failed to configure test HTTP socket", code: .providerApiError, exitCode: .providerApiError)
+      throw GoogleCalendarGatewayError("Failed to configure test HTTP socket", code: .providerApiError, exitCode: .providerApiError)
     }
 
     var address = sockaddr_in()
@@ -440,11 +440,11 @@ final class OneShotHTTPServer: @unchecked Sendable {
     }
     guard bindResult == 0 else {
       close(fd)
-      throw CalendarGatewayError("Failed to bind test HTTP socket", code: .providerApiError, exitCode: .providerApiError)
+      throw GoogleCalendarGatewayError("Failed to bind test HTTP socket", code: .providerApiError, exitCode: .providerApiError)
     }
     guard listen(fd, 1) == 0 else {
       close(fd)
-      throw CalendarGatewayError("Failed to listen on test HTTP socket", code: .providerApiError, exitCode: .providerApiError)
+      throw GoogleCalendarGatewayError("Failed to listen on test HTTP socket", code: .providerApiError, exitCode: .providerApiError)
     }
 
     var boundAddress = sockaddr_in()
@@ -456,7 +456,7 @@ final class OneShotHTTPServer: @unchecked Sendable {
     }
     guard nameResult == 0 else {
       close(fd)
-      throw CalendarGatewayError("Failed to resolve test HTTP socket port", code: .providerApiError, exitCode: .providerApiError)
+      throw GoogleCalendarGatewayError("Failed to resolve test HTTP socket port", code: .providerApiError, exitCode: .providerApiError)
     }
 
     socketFD = fd
@@ -480,7 +480,7 @@ final class OneShotHTTPServer: @unchecked Sendable {
     case .failure(let error):
       throw error
     case nil:
-      throw CalendarGatewayError("Test HTTP server did not capture a request", code: .providerApiError, exitCode: .providerApiError)
+      throw GoogleCalendarGatewayError("Test HTTP server did not capture a request", code: .providerApiError, exitCode: .providerApiError)
     }
   }
 
@@ -488,7 +488,7 @@ final class OneShotHTTPServer: @unchecked Sendable {
     let requestResult = Result {
       let connection = accept(socketFD, nil, nil)
       guard connection >= 0 else {
-        throw CalendarGatewayError("Failed to accept test HTTP request", code: .providerApiError, exitCode: .providerApiError)
+        throw GoogleCalendarGatewayError("Failed to accept test HTTP request", code: .providerApiError, exitCode: .providerApiError)
       }
       defer {
         close(connection)
@@ -517,7 +517,7 @@ final class OneShotHTTPServer: @unchecked Sendable {
       }
     }
     guard let request = String(data: data, encoding: .utf8), !request.isEmpty else {
-      throw CalendarGatewayError("Test HTTP request was empty", code: .providerApiError, exitCode: .providerApiError)
+      throw GoogleCalendarGatewayError("Test HTTP request was empty", code: .providerApiError, exitCode: .providerApiError)
     }
     return request
   }
@@ -595,10 +595,10 @@ func testCredential(
   )
 }
 
-func testConfig(accessMode: CalendarAccessMode = .read) -> CalendarGatewayConfig {
-  CalendarGatewayConfig(
-    configPath: "/tmp/calendar-gateway-test.toml",
-    storage: CalendarStorageConfig(cacheDir: "/tmp/calendar-gateway-cache"),
+func testConfig(accessMode: CalendarAccessMode = .read) -> GoogleCalendarGatewayConfig {
+  GoogleCalendarGatewayConfig(
+    configPath: "/tmp/google-calendar-gateway-test.toml",
+    storage: CalendarStorageConfig(cacheDir: "/tmp/google-calendar-gateway-cache"),
     credentials: [
       CalendarCredentialConfig(
         id: "google-personal",

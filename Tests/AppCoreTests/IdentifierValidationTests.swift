@@ -1,8 +1,8 @@
 import Testing
-@testable import CalendarGatewayCore
+@testable import GoogleCalendarGatewayCore
 
 @Test func graphQLRejectsBlankRequiredIdentifiersBeforeProviderCalls() throws {
-  let service = CalendarGatewayService(config: testConfig(), provider: ThrowingReadProvider())
+  let service = GoogleCalendarGatewayService(config: testConfig(), provider: ThrowingReadProvider())
   let cases = [
     (
       "{ events(calendarId: \"\") { events { id } } }",
@@ -25,15 +25,15 @@ import Testing
 }
 
 @Test func libraryRejectsBlankReadIdentifiersBeforeProviderCalls() throws {
-  let service = CalendarGatewayService(config: testConfig(), provider: ThrowingReadProvider())
+  let service = GoogleCalendarGatewayService(config: testConfig(), provider: ThrowingReadProvider())
 
-  let blankAccount = try requireCalendarGatewayError {
+  let blankAccount = try requireGoogleCalendarGatewayError {
     _ = try service.searchEvents(search: CalendarEventSearch(accountId: " "))
   }
-  let blankProviderCalendar = try requireCalendarGatewayError {
+  let blankProviderCalendar = try requireGoogleCalendarGatewayError {
     _ = try service.searchEvents(search: CalendarEventSearch(accountId: "personal", calendarId: " "))
   }
-  let blankEvent = try requireCalendarGatewayError {
+  let blankEvent = try requireGoogleCalendarGatewayError {
     _ = try service.calendarEvent(accountId: "personal", eventId: " ")
   }
 
@@ -46,8 +46,8 @@ import Testing
 }
 
 @Test func libraryRejectsBlankWriteProviderCalendarIdBeforeProviderCalls() throws {
-  let service = CalendarGatewayService(config: testConfig(accessMode: .readWrite), provider: FailingWriteProvider())
-  let createError = try requireCalendarGatewayError {
+  let service = GoogleCalendarGatewayService(config: testConfig(accessMode: .readWrite), provider: FailingWriteProvider())
+  let createError = try requireGoogleCalendarGatewayError {
     _ = try service.createCalendarEvent(input: CalendarEventInput(
       accountId: "personal",
       calendarId: " ",
@@ -56,7 +56,7 @@ import Testing
       end: "2026-07-01T09:30:00Z"
     ))
   }
-  let deleteError = try requireCalendarGatewayError {
+  let deleteError = try requireGoogleCalendarGatewayError {
     _ = try service.deleteEvent(accountId: "personal", calendarId: " ", eventId: "event-1")
   }
 
@@ -67,7 +67,7 @@ import Testing
 }
 
 @Test func libraryNormalizesWriteProviderCalendarAndEventIdsBeforeProviderCalls() throws {
-  let service = CalendarGatewayService(config: testConfig(accessMode: .readWrite), provider: FakeCalendarProvider())
+  let service = GoogleCalendarGatewayService(config: testConfig(accessMode: .readWrite), provider: FakeCalendarProvider())
 
   let created = try service.createCalendarEvent(input: CalendarEventInput(
     accountId: "personal",

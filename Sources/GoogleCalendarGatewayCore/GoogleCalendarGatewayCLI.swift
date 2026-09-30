@@ -1,43 +1,46 @@
 import Foundation
 
-public struct CalendarGatewayCLI {
-  let serviceFactory: (CalendarGatewayConfig) -> CalendarGatewayService
+public struct GoogleCalendarGatewayCLI {
+  let mode: GoogleCalendarGatewayCLIMode
+  let serviceFactory: (GoogleCalendarGatewayConfig) -> GoogleCalendarGatewayService
 
-  public init() {
-    serviceFactory = { CalendarGatewayService(config: $0) }
+  public init(mode: GoogleCalendarGatewayCLIMode = .reader) {
+    self.mode = mode
+    serviceFactory = { GoogleCalendarGatewayService(config: $0) }
   }
 
-  init(serviceFactory: @escaping (CalendarGatewayConfig) -> CalendarGatewayService) {
+  init(mode: GoogleCalendarGatewayCLIMode = .reader, serviceFactory: @escaping (GoogleCalendarGatewayConfig) -> GoogleCalendarGatewayService) {
+    self.mode = mode
     self.serviceFactory = serviceFactory
   }
 
   public func run(
     arguments: [String],
     environment: [String: String] = ProcessInfo.processInfo.environment
-  ) -> CalendarGatewayCommandResult {
+  ) -> GoogleCalendarGatewayCommandResult {
     do {
       let parsed = try parseArguments(arguments)
       try validateNoRepeatedFlags(parsed.repeatedFlags)
       if parsed.flags["version"] != nil {
         try validateGlobalControlCommand(parsed, flag: "version")
-        return CalendarGatewayCommandResult(exitCode: CalendarGatewayExitCode.success.rawValue, stdout: Version.current + "\n", stderr: "")
+        return GoogleCalendarGatewayCommandResult(exitCode: GoogleCalendarGatewayExitCode.success.rawValue, stdout: Version.current + "\n", stderr: "")
       }
       if shouldShowHelp(parsed) {
         try validateGlobalControlCommand(parsed, flag: "help")
-        return CalendarGatewayCommandResult(exitCode: CalendarGatewayExitCode.success.rawValue, stdout: rootHelpText(), stderr: "")
+        return GoogleCalendarGatewayCommandResult(exitCode: GoogleCalendarGatewayExitCode.success.rawValue, stdout: rootHelpText(mode: mode), stderr: "")
       }
-      let configPath = try getStringFlag(parsed.flags, "config") ?? environment["CALENDAR_GATEWAY_CONFIG"]
+      let configPath = try getStringFlag(parsed.flags, "config") ?? environment["GOOGLE_CALENDAR_GATEWAY_CONFIG"]
       let pretty = try getBooleanFlag(parsed.flags, "pretty")
       return try runParsedCommand(parsed, configPath: configPath, environment: environment, pretty: pretty)
-    } catch let error as CalendarGatewayError {
-      return CalendarGatewayCommandResult(
+    } catch let error as GoogleCalendarGatewayError {
+      return GoogleCalendarGatewayCommandResult(
         exitCode: error.exitCode.rawValue,
         stdout: "",
         stderr: jsonString(errorOutput(error), pretty: true) + "\n"
       )
     } catch {
-      let appError = CalendarGatewayError(String(describing: error), code: .configInvalid, exitCode: .generalError)
-      return CalendarGatewayCommandResult(
+      let appError = GoogleCalendarGatewayError(String(describing: error), code: .configInvalid, exitCode: .generalError)
+      return GoogleCalendarGatewayCommandResult(
         exitCode: appError.exitCode.rawValue,
         stdout: "",
         stderr: jsonString(errorOutput(appError), pretty: true) + "\n"
@@ -54,30 +57,30 @@ public struct CalendarGatewayCLI {
     configPath: String?,
     environment: [String: String],
     pretty: Bool
-  ) throws -> CalendarGatewayCommandResult {
+  ) throws -> GoogleCalendarGatewayCommandResult {
     let command = parsed.positionals.first
     let subcommand = parsed.positionals.dropFirst().first
     switch command {
     case "graphql":
       try validateAllowedFlags(parsed.flags, commandFlags: ["query", "query-file", "variables", "variables-file"])
       try validatePositionalCount(parsed.positionals, count: 1)
-      let config = try CalendarGatewayConfigLoader.loadConfig(configPath: configPath, environment: environment)
+      let config = try GoogleCalendarGatewayConfigLoader.loadConfig(configPath: configPath, environment: environment)
       let query = try loadQuery(flags: parsed.flags)
       _ = try loadVariables(flags: parsed.flags)
-      let result = try executeCalendarGraphQL(config: config, query: query)
+      let result = try executeCalendarGraphQL(service: serviceFactory(config), query: query, mode: mode)
       return success(result.body, exitCode: result.exitCode, pretty: pretty)
     case "config":
       try validateAllowedFlags(parsed.flags, commandFlags: [])
       try validatePositionalCount(parsed.positionals, count: 2)
       guard subcommand == "validate" else {
-        throw CalendarGatewayError(
+        throw GoogleCalendarGatewayError(
           "config requires the validate subcommand",
           code: .invalidArgument,
           exitCode: .invalidCliUsage
         )
       }
       return success(
-        try CalendarGatewayConfigLoader.validateConfig(configPath: configPath, environment: environment),
+        try GoogleCalendarGatewayConfigLoader.validateConfig(configPath: configPath, environment: environment),
         pretty: pretty
       )
     case "auth":
@@ -92,6 +95,7 @@ public struct CalendarGatewayCLI {
       try validatePositionalCount(parsed.positionals, count: 2)
       return try runCache(subcommand: subcommand, flags: parsed.flags, configPath: configPath, environment: environment, pretty: pretty)
     case "event":
+      try mode.requireWrites(exitCode: .invalidCliUsage)
       try validateAllowedFlags(parsed.flags, commandFlags: try eventCommandFlags(subcommand: subcommand))
       try validatePositionalCount(parsed.positionals, count: 2)
       return try runEventCommand(
@@ -103,7 +107,7 @@ public struct CalendarGatewayCLI {
       )
     default:
       try validateAllowedFlags(parsed.flags, commandFlags: [])
-      throw CalendarGatewayError(
+      throw GoogleCalendarGatewayError(
         "Supported commands: graphql, config validate, auth <login|revoke|status>, cache prune, event <create|update|delete>",
         code: .invalidArgument,
         exitCode: .invalidCliUsage
@@ -117,9 +121,10 @@ public struct CalendarGatewayCLI {
     configPath: String?,
     environment: [String: String],
     pretty: Bool
-  ) throws -> CalendarGatewayCommandResult {
-    guard let credentialId = try getStringFlag(flags, "credential") else {
-      throw CalendarGatewayError(
+  ) throws -> GoogleCalendarGatewayCommandResult {
+    guard let credentialId = try getStringFlag(flags, "credential")
+      ?? (subcommand == "login" ? "google-personal" : nil) else {
+      throw GoogleCalendarGatewayError(
         "auth commands require --credential",
         code: .invalidArgument,
         exitCode: .invalidCliUsage
@@ -127,13 +132,13 @@ public struct CalendarGatewayCLI {
     }
     switch subcommand {
     case "status":
-      let service = CalendarGatewayService(
-        config: try CalendarGatewayConfigLoader.loadConfig(configPath: configPath, environment: environment)
+      let service = GoogleCalendarGatewayService(
+        config: try GoogleCalendarGatewayConfigLoader.loadConfig(configPath: configPath, environment: environment)
       )
       return success(try service.getAuthStatus(credentialId: credentialId), pretty: pretty)
     case "revoke":
-      let service = CalendarGatewayService(
-        config: try CalendarGatewayConfigLoader.loadConfig(configPath: configPath, environment: environment)
+      let service = GoogleCalendarGatewayService(
+        config: try GoogleCalendarGatewayConfigLoader.loadConfig(configPath: configPath, environment: environment)
       )
       return success(try service.revokeAuth(credentialId: credentialId), pretty: pretty)
     case "login":
@@ -142,12 +147,12 @@ public struct CalendarGatewayCLI {
         openBrowser: try getBooleanFlag(flags, "open-browser", defaultValue: true),
         timeoutSeconds: try getIntFlag(flags, "timeout-seconds", defaultValue: 300, range: 1...3_600)
       )
-      let service = CalendarGatewayService(
-        config: try CalendarGatewayConfigLoader.loadConfig(configPath: configPath, environment: environment)
+      let service = GoogleCalendarGatewayService(
+        config: try GoogleCalendarGatewayConfigLoader.loadConfig(configPath: configPath, environment: environment)
       )
       return success(try service.login(credentialId: credentialId, options: options), pretty: pretty)
     default:
-      throw CalendarGatewayError(
+      throw GoogleCalendarGatewayError(
         "auth requires one of: login, revoke, status",
         code: .invalidArgument,
         exitCode: .invalidCliUsage
@@ -161,16 +166,16 @@ public struct CalendarGatewayCLI {
     configPath: String?,
     environment: [String: String],
     pretty: Bool
-  ) throws -> CalendarGatewayCommandResult {
+  ) throws -> GoogleCalendarGatewayCommandResult {
     guard subcommand == "prune" else {
-      throw CalendarGatewayError(
+      throw GoogleCalendarGatewayError(
         "cache requires the prune subcommand",
         code: .invalidArgument,
         exitCode: .invalidCliUsage
       )
     }
-    let service = CalendarGatewayService(
-      config: try CalendarGatewayConfigLoader.loadConfig(configPath: configPath, environment: environment)
+    let service = GoogleCalendarGatewayService(
+      config: try GoogleCalendarGatewayConfigLoader.loadConfig(configPath: configPath, environment: environment)
     )
     return success(
       try service.pruneCache(
@@ -183,37 +188,40 @@ public struct CalendarGatewayCLI {
 
   private func success(
     _ payload: [String: Any],
-    exitCode: CalendarGatewayExitCode = .success,
+    exitCode: GoogleCalendarGatewayExitCode = .success,
     pretty: Bool
-  ) -> CalendarGatewayCommandResult {
-    CalendarGatewayCommandResult(exitCode: exitCode.rawValue, stdout: jsonString(payload, pretty: pretty) + "\n", stderr: "")
+  ) -> GoogleCalendarGatewayCommandResult {
+    GoogleCalendarGatewayCommandResult(exitCode: exitCode.rawValue, stdout: jsonString(payload, pretty: pretty) + "\n", stderr: "")
   }
 }
 
-private func rootHelpText() -> String {
-  """
-  calendar-gateway
+private func rootHelpText(mode: GoogleCalendarGatewayCLIMode) -> String {
+  let executable = mode.executableName
+  let eventCommands = mode == .writer ? """
+    event create --calendar <local-id> [event input flags] [--dry-run]
+    event update --calendar <local-id> --event-id <id> [event input flags] [--dry-run]
+    event delete --calendar <local-id> --event-id <id> [--provider-calendar <id>] [--send-updates <value>] [--dry-run]
+  """ : ""
+  return """
+  \(executable)
 
   Usage:
-    calendar-gateway [--config <path>] [--pretty] <command>
+    \(executable) [--config <path>] [--pretty] <command>
 
   Commands:
     graphql --query <query> [--variables <json>|--variables-file <path>]
     graphql --query-file <path> [--variables <json>|--variables-file <path>]
     config validate
     auth <login|revoke|status> --credential <id>
-    auth login --credential <id> [--redirect-uri <loopback-url>] [--open-browser false] [--timeout-seconds <seconds>]
+    auth login [--credential <id>] [--redirect-uri <loopback-url>] [--open-browser false] [--timeout-seconds <seconds>]
     cache prune [--calendar <id>|--all]
-    event create --calendar <local-id> [event input flags] [--dry-run]
-    event update --calendar <local-id> --event-id <id> [event input flags] [--dry-run]
-    event delete --calendar <local-id> --event-id <id> [--provider-calendar <id>] [--send-updates <value>] [--dry-run]
+  \(eventCommands)
 
   Examples:
-    calendar-gateway graphql --query '{ calendars { id } }'
-    calendar-gateway config validate
-    calendar-gateway auth status --credential google-personal
-    calendar-gateway cache prune --calendar personal
-    calendar-gateway event create --calendar personal --summary Planning --start 2026-07-01T09:00:00Z --end 2026-07-01T09:30:00Z --dry-run
+    \(executable) graphql --query '{ calendars { id } }'
+    \(executable) config validate
+    \(executable) auth status --credential google-personal
+    \(executable) cache prune --calendar personal
   """
 }
 
@@ -232,7 +240,7 @@ private func eventCommandFlags(subcommand: String?) throws -> Set<String> {
   case "delete":
     return targetFlags.union(["event-id"])
   default:
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       "event requires one of: create, update, delete",
       code: .invalidArgument,
       exitCode: .invalidCliUsage
@@ -251,7 +259,7 @@ private func validateGlobalControlCommand(_ parsed: ParsedArgs, flag: String) th
 
 private func validateNoRepeatedFlags(_ repeatedFlags: [String: [StringOrBool]]) throws {
   for flag in repeatedFlags.keys.sorted() where (repeatedFlags[flag]?.count ?? 0) > 1 {
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       "Duplicate flag: --\(flag)",
       code: .invalidArgument,
       exitCode: .invalidCliUsage
@@ -264,7 +272,7 @@ private func validateBooleanControlFlag(_ flags: [String: StringOrBool], _ flag:
   case .bool(true), nil:
     return
   case .bool(false), .string:
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       "--\(flag) does not accept a value",
       code: .invalidArgument,
       exitCode: .invalidCliUsage
@@ -289,7 +297,7 @@ private func getIntFlag(
     return defaultValue
   }
   guard let intValue = Int(value), range.contains(intValue) else {
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       "--\(name) must be an integer between \(range.lowerBound) and \(range.upperBound)",
       code: .invalidArgument,
       exitCode: .invalidCliUsage
@@ -300,7 +308,7 @@ private func getIntFlag(
 
 private func validatePositionalCount(_ positionals: [String], count: Int) throws {
   guard positionals.count <= count else {
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       "Unexpected argument: \(positionals[count])",
       code: .invalidArgument,
       exitCode: .invalidCliUsage
@@ -311,7 +319,7 @@ private func validatePositionalCount(_ positionals: [String], count: Int) throws
 private func validateAllowedFlags(_ flags: [String: StringOrBool], commandFlags: Set<String>) throws {
   let allowed = commandFlags.union(["config", "pretty", "help", "version"])
   for flag in flags.keys.sorted() where !allowed.contains(flag) {
-    throw CalendarGatewayError(
+    throw GoogleCalendarGatewayError(
       "Unknown flag: --\(flag)",
       code: .invalidArgument,
       exitCode: .invalidCliUsage

@@ -16,35 +16,35 @@ private struct CredentialPathRequest {
   let context: String
 }
 
-public enum CalendarGatewayConfigLoader {
+public enum GoogleCalendarGatewayConfigLoader {
   private static let defaultCredentialId = "google-personal"
   private static let defaultAccountId = "personal"
 
   public static func getCredentialPathEnvVarName(credentialId: String, pathKey: String) -> String {
     let safeSuffix = credentialEnvSuffix(credentialId)
     if pathKey == "oauth_client_secret_path" {
-      return "CALENDAR_GATEWAY_CREDENTIAL_\(safeSuffix)_OAUTH_CLIENT_SECRET_PATH"
+      return "GOOGLE_CALENDAR_GATEWAY_CREDENTIAL_\(safeSuffix)_OAUTH_CLIENT_SECRET_PATH"
     }
-    return "CALENDAR_GATEWAY_CREDENTIAL_\(safeSuffix)_TOKEN_STORE_PATH"
+    return "GOOGLE_CALENDAR_GATEWAY_CREDENTIAL_\(safeSuffix)_TOKEN_STORE_PATH"
   }
 
   public static func getCredentialJSONEnvVarName(credentialId: String, valueKey: String) -> String {
     let safeSuffix = credentialEnvSuffix(credentialId)
     if valueKey == "oauth_client_secret_json" {
-      return "CALENDAR_GATEWAY_CREDENTIAL_\(safeSuffix)_OAUTH_CLIENT_SECRET_JSON"
+      return "GOOGLE_CALENDAR_GATEWAY_CREDENTIAL_\(safeSuffix)_OAUTH_CLIENT_SECRET_JSON"
     }
-    return "CALENDAR_GATEWAY_CREDENTIAL_\(safeSuffix)_TOKEN_STORE_JSON"
+    return "GOOGLE_CALENDAR_GATEWAY_CREDENTIAL_\(safeSuffix)_TOKEN_STORE_JSON"
   }
 
   /// Default directory for persisted OAuth token stores. Tokens are auth
   /// state, not configuration, so the default lives under XDG_STATE_HOME
-  /// (~/.local/state), never ~/.config. CALENDAR_GATEWAY_CREDENTIAL_DIR
+  /// (~/.local/state), never ~/.config. GOOGLE_CALENDAR_GATEWAY_CREDENTIAL_DIR
   /// relocates the directory; a per-credential *_TOKEN_STORE_PATH still wins
   /// for one file.
   public static func resolveDefaultCredentialDirectory(
     environment: [String: String] = ProcessInfo.processInfo.environment
   ) -> String {
-    if let credentialDir = nonBlank(environment["CALENDAR_GATEWAY_CREDENTIAL_DIR"]) {
+    if let credentialDir = nonBlank(environment["GOOGLE_CALENDAR_GATEWAY_CREDENTIAL_DIR"]) {
       return normalizedPath(credentialDir)
     }
     let stateRoot = nonBlank(environment["XDG_STATE_HOME"]).flatMap { $0.hasPrefix("/") ? $0 : nil }
@@ -53,7 +53,7 @@ public enum CalendarGatewayConfigLoader {
         .appendingPathComponent("state")
         .path
     return normalizedPath(URL(fileURLWithPath: stateRoot)
-      .appendingPathComponent("calendar-gateway")
+      .appendingPathComponent("google-calendar-gateway")
       .appendingPathComponent("credentials")
       .path)
   }
@@ -63,31 +63,32 @@ public enum CalendarGatewayConfigLoader {
   ) -> String {
     if let xdgConfigHome = nonBlank(environment["XDG_CONFIG_HOME"]), xdgConfigHome.hasPrefix("/") {
       return normalizedPath(URL(fileURLWithPath: xdgConfigHome)
-        .appendingPathComponent("calendar-gateway")
+        .appendingPathComponent("google-calendar-gateway")
         .appendingPathComponent("config.toml")
         .path)
     }
     return normalizedPath(FileManager.default.homeDirectoryForCurrentUser
       .appendingPathComponent(".config")
-      .appendingPathComponent("calendar-gateway")
+      .appendingPathComponent("google-calendar-gateway")
       .appendingPathComponent("config.toml")
       .path)
   }
 
   public static func loadConfig(
     configPath: String? = nil,
-    environment: [String: String] = ProcessInfo.processInfo.environment
-  ) throws -> CalendarGatewayConfig {
-    let explicitConfigPath = nonBlank(configPath) ?? nonBlank(environment["CALENDAR_GATEWAY_CONFIG"])
+    environment sourceEnvironment: [String: String] = ProcessInfo.processInfo.environment
+  ) throws -> GoogleCalendarGatewayConfig {
+    let initialEnvironment = sourceEnvironment
+    let explicitConfigPath = nonBlank(configPath) ?? nonBlank(initialEnvironment["GOOGLE_CALENDAR_GATEWAY_CONFIG"])
     let usesImplicitDefaultConfig = explicitConfigPath == nil
-    let selectedConfigPath = normalizedPath(explicitConfigPath ?? resolveDefaultConfigPath(environment: environment))
+    let selectedConfigPath = normalizedPath(explicitConfigPath ?? resolveDefaultConfigPath(environment: initialEnvironment))
     let source: String
     do {
       source = try String(contentsOfFile: selectedConfigPath, encoding: .utf8)
     } catch {
       if usesImplicitDefaultConfig,
          !FileManager.default.fileExists(atPath: selectedConfigPath) {
-        return try defaultConfig(configPath: selectedConfigPath, environment: environment)
+        return try defaultConfig(configPath: selectedConfigPath, environment: calendarCredentialEnvironment(initialEnvironment))
       }
       throw configError(
         "Failed to read config: \(selectedConfigPath)",
@@ -106,6 +107,10 @@ public enum CalendarGatewayConfigLoader {
       throw configError("calendars must be a non-empty array")
     }
 
+    let environment = try calendarCredentialEnvironment(
+      sourceEnvironment,
+      credentialIDs: parsed.credentials.compactMap { $0["id"] as? String }
+    )
     let storage = try parseStorageConfig(storageRecord, configPath: selectedConfigPath)
     let credentials = try parsed.credentials.enumerated().map { index, record in
       try parseCredentialConfig(record, index: index, configPath: selectedConfigPath, environment: environment)
@@ -122,7 +127,7 @@ public enum CalendarGatewayConfigLoader {
     try validateAccountCredentialLinks(credentials: credentials, accounts: accounts)
     try validateOAuthClientSecretPaths(credentials)
 
-    return CalendarGatewayConfig(
+    return GoogleCalendarGatewayConfig(
       configPath: selectedConfigPath,
       storage: storage,
       credentials: credentials,
@@ -134,7 +139,7 @@ public enum CalendarGatewayConfigLoader {
     configPath: String? = nil,
     environment: [String: String] = ProcessInfo.processInfo.environment
   ) throws -> [String: Any] {
-    let explicitConfigPath = nonBlank(configPath) ?? nonBlank(environment["CALENDAR_GATEWAY_CONFIG"])
+    let explicitConfigPath = nonBlank(configPath) ?? nonBlank(environment["GOOGLE_CALENDAR_GATEWAY_CONFIG"])
     let usesImplicitDefaultConfig = explicitConfigPath == nil
     let selectedConfigPath = normalizedPath(explicitConfigPath ?? resolveDefaultConfigPath(environment: environment))
     if usesImplicitDefaultConfig, !FileManager.default.fileExists(atPath: selectedConfigPath) {
@@ -161,7 +166,7 @@ public enum CalendarGatewayConfigLoader {
   private static func defaultConfig(
     configPath: String,
     environment: [String: String]
-  ) throws -> CalendarGatewayConfig {
+  ) throws -> GoogleCalendarGatewayConfig {
     let credential = CalendarCredentialConfig(
       id: defaultCredentialId,
       provider: .google,
@@ -203,7 +208,7 @@ public enum CalendarGatewayConfigLoader {
     // overrides intentionally retain their selected source without migration.
     if credential.tokenStoreJSON == nil,
        !credential.tokenStorePathFromEnvironment,
-       nonBlank(environment["CALENDAR_GATEWAY_CREDENTIAL_DIR"]) == nil {
+       nonBlank(environment["GOOGLE_CALENDAR_GATEWAY_CREDENTIAL_DIR"]) == nil {
       let legacyPath = URL(fileURLWithPath: configPath)
         .deletingLastPathComponent()
         .appendingPathComponent("tokens")
@@ -212,7 +217,7 @@ public enum CalendarGatewayConfigLoader {
       try migrateCalendarLegacyTokenStore(from: legacyPath, to: credential.tokenStorePath)
     }
 
-    return CalendarGatewayConfig(
+    return GoogleCalendarGatewayConfig(
       configPath: configPath,
       storage: CalendarStorageConfig(cacheDir: defaultCacheDirectory(environment: environment)),
       credentials: [credential],
@@ -234,12 +239,12 @@ public enum CalendarGatewayConfigLoader {
   private static func defaultCacheDirectory(environment: [String: String]) -> String {
     if let xdgCacheHome = nonBlank(environment["XDG_CACHE_HOME"]) {
       return normalizedPath(URL(fileURLWithPath: xdgCacheHome)
-        .appendingPathComponent("calendar-gateway", isDirectory: true)
+        .appendingPathComponent("google-calendar-gateway", isDirectory: true)
         .path)
     }
     return normalizedPath(FileManager.default.homeDirectoryForCurrentUser
       .appendingPathComponent(".cache", isDirectory: true)
-      .appendingPathComponent("calendar-gateway", isDirectory: true)
+      .appendingPathComponent("google-calendar-gateway", isDirectory: true)
       .path)
   }
 
@@ -377,13 +382,13 @@ private func parseCredentialConfig(
   let credentialId = try readString(record["id"], "\(contextBase).id")
   try validateConfigIdentifier(credentialId, context: "\(contextBase).id")
   let oauthClientSecretJSON = nonBlank(environment[
-    CalendarGatewayConfigLoader.getCredentialJSONEnvVarName(
+    GoogleCalendarGatewayConfigLoader.getCredentialJSONEnvVarName(
       credentialId: credentialId,
       valueKey: "oauth_client_secret_json"
     )
   ])
   let tokenStoreJSON = nonBlank(environment[
-    CalendarGatewayConfigLoader.getCredentialJSONEnvVarName(
+    GoogleCalendarGatewayConfigLoader.getCredentialJSONEnvVarName(
       credentialId: credentialId,
       valueKey: "token_store_json"
     )
@@ -410,7 +415,7 @@ private func parseCredentialConfig(
       context: "\(contextBase).token_store_path"
     )),
     tokenStoreJSON: tokenStoreJSON,
-    tokenStorePathFromEnvironment: nonBlank(environment[CalendarGatewayConfigLoader.getCredentialPathEnvVarName(
+    tokenStorePathFromEnvironment: nonBlank(environment[GoogleCalendarGatewayConfigLoader.getCredentialPathEnvVarName(
       credentialId: credentialId, pathKey: "token_store_path"
     )]) != nil
   )
@@ -442,7 +447,7 @@ private func parseAccountConfig(_ record: [String: Any], index: Int) throws -> C
 }
 
 private func resolveCredentialPath(_ request: CredentialPathRequest) throws -> String {
-  let envName = CalendarGatewayConfigLoader.getCredentialPathEnvVarName(
+  let envName = GoogleCalendarGatewayConfigLoader.getCredentialPathEnvVarName(
     credentialId: request.credentialId,
     pathKey: request.pathKey
   )
@@ -466,7 +471,7 @@ private func resolveConfigRelativePath(configPath: String, rawPath: String) thro
 
 private func validateOAuthClientSecretPaths(_ credentials: [CalendarCredentialConfig]) throws {
   for credential in credentials
-    where credential.oauthClientSecretJSON == nil &&
+    where credential.tokenStoreJSON == nil && credential.oauthClientSecretJSON == nil &&
     !FileManager.default.isReadableFile(atPath: credential.oauthClientSecretPath) {
     throw configError(
       "credentials.\(credential.id).oauth_client_secret_path is not readable: \(credential.oauthClientSecretPath)"
@@ -537,7 +542,7 @@ private func validateConfigIdentifier(_ value: String, context: String) throws {
   }
 }
 
-private func identifierEnvironmentKey(_ value: String) -> String {
+func identifierEnvironmentKey(_ value: String) -> String {
   let suffix = value.trimmingCharacters(in: .whitespacesAndNewlines).map { character -> Character in
     character.isLetter || character.isNumber ? character : "_"
   }
@@ -569,6 +574,6 @@ private func readOptionalStringUnchecked(_ value: Any?) -> String? {
   return nonBlank(string)
 }
 
-func configError(_ message: String, details: [String: String] = [:]) -> CalendarGatewayError {
-  CalendarGatewayError(message, code: .configInvalid, exitCode: .configurationError, details: details)
+func configError(_ message: String, details: [String: String] = [:]) -> GoogleCalendarGatewayError {
+  GoogleCalendarGatewayError(message, code: .configInvalid, exitCode: .configurationError, details: details)
 }

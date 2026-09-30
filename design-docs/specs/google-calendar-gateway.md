@@ -1,6 +1,6 @@
 # Calendar Gateway Design
 
-This document defines the target design for `calendar-gateway` as both a Swift
+This document defines the target design for `google-calendar-gateway` as both a Swift
 library and a local CLI calendar client. It uses a sibling `mail-gateway`
 checkout as the behavioral reference for local AI-friendly gateway patterns,
 while keeping calendar-specific models and safety rules separate from mail
@@ -16,7 +16,7 @@ Codex-agent reference was supplied.
 ## Goals
 
 - Expose a Swift library API for calendar providers such as Google Calendar.
-- Provide a `calendar-gateway` CLI with mail-gateway-quality command behavior:
+- Provide `google-calendar-gateway-reader` and `google-calendar-gateway-writer` CLIs with mail-gateway-quality command behavior:
   structured JSON output, explicit config/auth commands, one-shot GraphQL
   transport, clear exit codes, and safe file/token handling.
 - Keep provider logic behind adapters so Google Calendar is the first provider,
@@ -39,7 +39,7 @@ Codex-agent reference was supplied.
 The first milestone ships one executable:
 
 ```bash
-calendar-gateway [--config <path>] [--pretty] <command>
+google-calendar-gateway-reader [--config <path>] [--pretty] <command>
 ```
 
 Required commands:
@@ -60,12 +60,12 @@ secret-bearing environment values.
 
 Default configuration path:
 
-- `$XDG_CONFIG_HOME/calendar-gateway/config.toml`
+- `$XDG_CONFIG_HOME/google-calendar-gateway/config.toml`
 
 Overrides:
 
 - `--config <path>`
-- `CALENDAR_GATEWAY_CONFIG`
+- `GOOGLE_CALENDAR_GATEWAY_CONFIG`
 
 Credential profiles are separate from calendars. Calendars reference a
 credential profile by ID, allowing multiple calendars to share an OAuth client
@@ -78,8 +78,8 @@ Example:
 id = "google-personal"
 provider = "google"
 access_mode = "read_write"
-oauth_client_secret_path = "~/.config/calendar-gateway/google-client.json"
-token_store_path = "~/.config/calendar-gateway/tokens/personal.json"
+oauth_client_secret_path = "~/.config/google-calendar-gateway/google-client.json"
+token_store_path = "~/.config/google-calendar-gateway/tokens/personal.json"
 
 [[calendars]]
 id = "primary"
@@ -92,8 +92,8 @@ display_name = "Primary"
 Environment path overrides follow the mail-gateway pattern with calendar-specific
 names:
 
-- `CALENDAR_GATEWAY_CREDENTIAL_<CREDENTIAL_ID>_OAUTH_CLIENT_SECRET_PATH`
-- `CALENDAR_GATEWAY_CREDENTIAL_<CREDENTIAL_ID>_TOKEN_STORE_PATH`
+- `GOOGLE_CALENDAR_GATEWAY_CREDENTIAL_<CREDENTIAL_ID>_OAUTH_CLIENT_SECRET_PATH`
+- `GOOGLE_CALENDAR_GATEWAY_CREDENTIAL_<CREDENTIAL_ID>_TOKEN_STORE_PATH`
 - optional JSON-bearing equivalents may exist, but must never be logged
 
 Validation rules:
@@ -117,14 +117,14 @@ Validation rules:
 The public library should expose calendar-domain types and protocols, not CLI
 parsing types. Initial boundary:
 
-- `CalendarGatewayClient`: type alias for the current application service,
+- `GoogleCalendarGatewayClient`: type alias for the current application service,
   supporting account/calendar lookup, event search, event fetch,
   create/update/delete operations when authorized, auth status, login, revoke,
   cache pruning, and raw Google Calendar v3 API execution for less common
   resources.
 - `CalendarEventProvider`: provider adapter protocol for Google Calendar and
   future event providers.
-- `CalendarGatewayConfig`: parsed and validated configuration.
+- `GoogleCalendarGatewayConfig`: parsed and validated configuration.
 - canonical models currently implemented: `CalendarInfo`,
   `CalendarCapabilities`, `ProviderCalendarInfo`, `CalendarEvent`,
   `CalendarEventParticipant`, `CalendarEventDateTime`, and
@@ -147,7 +147,7 @@ pointing at the same provider calendar as first-class objects.
 One-shot GraphQL is the required business transport:
 
 ```bash
-calendar-gateway graphql --query-file ./query.graphql --variables-file ./vars.json
+google-calendar-gateway-reader graphql --query-file ./query.graphql --variables-file ./vars.json
 ```
 
 Initial schema:

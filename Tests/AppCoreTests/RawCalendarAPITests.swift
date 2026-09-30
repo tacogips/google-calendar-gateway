@@ -1,9 +1,9 @@
 import Testing
-@testable import CalendarGatewayCore
+@testable import GoogleCalendarGatewayCore
 
 @Test func graphQLRawCalendarAPIReadsOfficialResourcePaths() throws {
   let result = try executeCalendarGraphQL(
-    service: CalendarGatewayService(config: testConfig(), provider: FakeCalendarProvider()),
+    service: GoogleCalendarGatewayService(config: testConfig(), provider: FakeCalendarProvider()),
     query: """
     {
       calendarAPI(
@@ -33,7 +33,7 @@ import Testing
 
 @Test func graphQLRawCalendarAPISupportsWatchNotificationBodies() throws {
   let result = try executeCalendarGraphQL(
-    service: CalendarGatewayService(config: testConfig(accessMode: .readWrite), provider: FakeCalendarProvider()),
+    service: GoogleCalendarGatewayService(config: testConfig(accessMode: .readWrite), provider: FakeCalendarProvider()),
     query: """
     mutation {
       calendarAPI(
@@ -61,7 +61,7 @@ import Testing
 
 @Test func graphQLRawCalendarAPIRejectsUnsafePaths() throws {
   let result = try executeCalendarGraphQL(
-    service: CalendarGatewayService(config: testConfig(), provider: FakeCalendarProvider()),
+    service: GoogleCalendarGatewayService(config: testConfig(), provider: FakeCalendarProvider()),
     query: """
     { calendarAPI(credentialId: "google-personal", method: "GET", path: "https://example.com/colors") { status } }
     """
@@ -73,7 +73,7 @@ import Testing
 
 @Test func rawCalendarAPIWriteAccessFailsBeforeProviderForReadOnlyCredentials() throws {
   let result = try executeCalendarGraphQL(
-    service: CalendarGatewayService(config: testConfig(), provider: FailingWriteProvider()),
+    service: GoogleCalendarGatewayService(config: testConfig(), provider: FailingWriteProvider()),
     query: """
     mutation {
       calendarAPI(
@@ -93,8 +93,8 @@ import Testing
 }
 
 @Test func publicGraphQLResolverCanBeUsedAsLibrary() throws {
-  let resolver = CalendarGatewayGraphQLResolver(
-    service: CalendarGatewayService(config: testConfig(), provider: FakeCalendarProvider())
+  let resolver = GoogleCalendarGatewayGraphQLResolver(
+    service: GoogleCalendarGatewayService(config: testConfig(), provider: FakeCalendarProvider())
   )
 
   let result = try resolver.execute(query: "{ calendars { id provider } }")

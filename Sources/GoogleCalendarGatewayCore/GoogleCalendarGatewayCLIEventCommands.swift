@@ -1,15 +1,15 @@
 import Foundation
 
-extension CalendarGatewayCLI {
+extension GoogleCalendarGatewayCLI {
   func runEventCommand(
     subcommand: String?,
     flags: [String: StringOrBool],
     configPath: String?,
     environment: [String: String],
     pretty: Bool
-  ) throws -> CalendarGatewayCommandResult {
+  ) throws -> GoogleCalendarGatewayCommandResult {
     let request = try eventCommandRequest(subcommand: subcommand, flags: flags)
-    let config = try CalendarGatewayConfigLoader.loadConfig(configPath: configPath, environment: environment)
+    let config = try GoogleCalendarGatewayConfigLoader.loadConfig(configPath: configPath, environment: environment)
     let service = serviceFactory(config)
     let result: CalendarEventMutationResult
     switch request {
@@ -26,8 +26,8 @@ extension CalendarGatewayCLI {
         dryRun: dryRun
       )
     }
-    return CalendarGatewayCommandResult(
-      exitCode: CalendarGatewayExitCode.success.rawValue,
+    return GoogleCalendarGatewayCommandResult(
+      exitCode: GoogleCalendarGatewayExitCode.success.rawValue,
       stdout: jsonString(result.jsonObject, pretty: pretty) + "\n",
       stderr: ""
     )
@@ -152,6 +152,6 @@ private func reminderArrayFlag(_ flags: [String: StringOrBool]) throws -> [Calen
   }
 }
 
-private func invalidCLIArgument(_ message: String) -> CalendarGatewayError {
-  CalendarGatewayError(message, code: .invalidArgument, exitCode: .invalidCliUsage)
+private func invalidCLIArgument(_ message: String) -> GoogleCalendarGatewayError {
+  GoogleCalendarGatewayError(message, code: .invalidArgument, exitCode: .invalidCliUsage)
 }

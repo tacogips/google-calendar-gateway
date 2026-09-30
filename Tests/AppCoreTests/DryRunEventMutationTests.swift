@@ -1,13 +1,13 @@
 import Foundation
 import Testing
-@testable import CalendarGatewayCore
+@testable import GoogleCalendarGatewayCore
 
 @Suite("DryRun Event Mutations")
 struct DryRunEventMutationTests {
   @Test("DryRun service previews are canonical and perform zero writes")
   func servicePreviews() throws {
     let provider = RecordingCalendarProvider()
-    let service = CalendarGatewayService(config: testConfig(accessMode: .readWrite), provider: provider)
+    let service = GoogleCalendarGatewayService(config: testConfig(accessMode: .readWrite), provider: provider)
     let createInput = CalendarEventInput(
       accountId: "personal",
       calendarId: " team@example.com ",
@@ -92,8 +92,8 @@ struct DryRunEventMutationTests {
   @Test("DryRun preserves write gate, validation, and live compatibility")
   func serviceOrderingAndLiveCompatibility() throws {
     let readOnlyProvider = RecordingCalendarProvider()
-    let readOnly = CalendarGatewayService(config: testConfig(), provider: readOnlyProvider)
-    let writeError = try requireCalendarGatewayError {
+    let readOnly = GoogleCalendarGatewayService(config: testConfig(), provider: readOnlyProvider)
+    let writeError = try requireGoogleCalendarGatewayError {
       _ = try readOnly.createEventMutation(input: CalendarEventInput(
         accountId: "personal",
         start: "bad",
@@ -104,8 +104,8 @@ struct DryRunEventMutationTests {
     #expect(readOnlyProvider.createInputs.isEmpty)
 
     let provider = RecordingCalendarProvider()
-    let service = CalendarGatewayService(config: testConfig(accessMode: .readWrite), provider: provider)
-    let invalidError = try requireCalendarGatewayError {
+    let service = GoogleCalendarGatewayService(config: testConfig(accessMode: .readWrite), provider: provider)
+    let invalidError = try requireGoogleCalendarGatewayError {
       _ = try service.updateEventMutation(input: CalendarEventInput(
         accountId: "personal",
         eventId: "",
@@ -143,7 +143,7 @@ struct DryRunEventMutationTests {
   @Test("DryRun GraphQL forwards booleans, projects selections, and preserves errors")
   func graphQLTransport() throws {
     let provider = RecordingCalendarProvider()
-    let service = CalendarGatewayService(config: testConfig(accessMode: .readWrite), provider: provider)
+    let service = GoogleCalendarGatewayService(config: testConfig(accessMode: .readWrite), provider: provider)
     let dryRun = try executeCalendarGraphQL(service: service, query: """
       mutation {
         createEvent(

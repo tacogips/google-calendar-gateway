@@ -7,7 +7,7 @@
 
 ## Purpose
 
-Implement the accepted Step 3 design updates for the calendar-gateway
+Implement the accepted Step 3 design updates for the google-calendar-gateway
 implementation review findings. The work repairs red CI first, then fixes High
 severity correctness issues, then same-boundary Medium issues that are already
 specified in `design-docs/specs/`.
@@ -19,9 +19,9 @@ product scope beyond the accepted design.
 
 - `design-docs/reviews/2026-07-02-implementation-review.md`
 - `design-docs/specs/architecture.md`
-- `design-docs/specs/calendar-gateway.md`
+- `design-docs/specs/google-calendar-gateway.md`
 - `design-docs/specs/command.md`
-- `design-docs/user-qa/pending-calendar-gateway-decisions.md`
+- `design-docs/user-qa/pending-google-calendar-gateway-decisions.md`
 
 No Codex-agent reference inputs were present for this workflow transition.
 Cursor- or Codex-agent-specific behavior remains outside provider adapters, as
@@ -55,7 +55,7 @@ accepted in the design.
 - TASK-002, TASK-003, and TASK-004 are High correctness work and should land
   before Medium behavior changes.
 - TASK-005 depends on or must coordinate closely with TASK-004 because both
-  touch `Sources/CalendarGatewayCore/CalendarGatewayGraphQL.swift`.
+  touch `Sources/GoogleCalendarGatewayCore/GoogleCalendarGatewayGraphQL.swift`.
 - TASK-006 config ID validation is a prerequisite for the cache prune
   containment hardening in TASK-007.
 - TASK-008 auth refresh and revoke changes share token-store code paths and
@@ -84,7 +84,7 @@ accepted in the design.
 
 **Completion Criteria**:
 
-- Linux CI no longer attempts to build the macOS-only `calendar-gateway`
+- Linux CI no longer attempts to build the macOS-only `google-calendar-gateway`
   product.
 - Gitleaks cannot fail solely because `<first-commit>^` is not a valid
   revision.
@@ -96,8 +96,8 @@ accepted in the design.
 
 **Write Scope**:
 
-- `Sources/CalendarGatewayCore/AuthTokenInspection.swift`
-- `Sources/CalendarGatewayCore/GoogleCalendarOAuthSupport.swift`
+- `Sources/GoogleCalendarGatewayCore/AuthTokenInspection.swift`
+- `Sources/GoogleCalendarGatewayCore/GoogleCalendarOAuthSupport.swift`
 - `Tests/AppCoreTests/*`
 
 **Work**:
@@ -119,9 +119,9 @@ accepted in the design.
 
 **Write Scope**:
 
-- `Sources/CalendarGatewayCore/CalendarGatewayUtilities.swift`
-- existing validation call sites as needed in `CalendarGatewayCore.swift` and
-  `CalendarGatewayGraphQL.swift`
+- `Sources/GoogleCalendarGatewayCore/GoogleCalendarGatewayUtilities.swift`
+- existing validation call sites as needed in `GoogleCalendarGatewayCore.swift` and
+  `GoogleCalendarGatewayGraphQL.swift`
 - `Tests/AppCoreTests/*`
 
 **Work**:
@@ -142,7 +142,7 @@ accepted in the design.
 
 **Write Scope**:
 
-- `Sources/CalendarGatewayCore/CalendarGatewayGraphQL.swift`
+- `Sources/GoogleCalendarGatewayCore/GoogleCalendarGatewayGraphQL.swift`
 - `Tests/AppCoreTests/*`
 
 **Work**:
@@ -164,7 +164,7 @@ accepted in the design.
 
 **Write Scope**:
 
-- `Sources/CalendarGatewayCore/CalendarGatewayGraphQL.swift`
+- `Sources/GoogleCalendarGatewayCore/GoogleCalendarGatewayGraphQL.swift`
 - `Tests/AppCoreTests/*`
 
 **Work**:
@@ -187,8 +187,8 @@ accepted in the design.
 
 **Write Scope**:
 
-- `Sources/CalendarGatewayCore/ConfigLoading.swift`
-- `Sources/CalendarGatewayCore/CalendarGatewayCLI.swift`
+- `Sources/GoogleCalendarGatewayCore/ConfigLoading.swift`
+- `Sources/GoogleCalendarGatewayCore/GoogleCalendarGatewayCLI.swift`
 - `Tests/AppCoreTests/*`
 
 **Work**:
@@ -218,8 +218,8 @@ accepted in the design.
 
 **Write Scope**:
 
-- `Sources/CalendarGatewayCore/CalendarGatewayCore.swift`
-- `Sources/CalendarGatewayCore/CalendarGatewayUtilities.swift`
+- `Sources/GoogleCalendarGatewayCore/GoogleCalendarGatewayCore.swift`
+- `Sources/GoogleCalendarGatewayCore/GoogleCalendarGatewayUtilities.swift`
 - `Tests/AppCoreTests/*`
 
 **Work**:
@@ -241,9 +241,9 @@ accepted in the design.
 
 **Write Scope**:
 
-- `Sources/CalendarGatewayCore/GoogleCalendarOAuthSupport.swift`
-- `Sources/CalendarGatewayCore/GoogleCalendarOAuthBootstrap.swift`
-- `Sources/CalendarGatewayCore/CalendarGatewayCore.swift`
+- `Sources/GoogleCalendarGatewayCore/GoogleCalendarOAuthSupport.swift`
+- `Sources/GoogleCalendarGatewayCore/GoogleCalendarOAuthBootstrap.swift`
+- `Sources/GoogleCalendarGatewayCore/GoogleCalendarGatewayCore.swift`
 - `Tests/AppCoreTests/*`
 
 **Work**:
@@ -273,9 +273,9 @@ accepted in the design.
 
 **Write Scope**:
 
-- `Sources/CalendarGatewayCore/CalendarRawAPI.swift`
-- `Sources/CalendarGatewayCore/CalendarGatewayGraphQL.swift`
-- `Sources/CalendarGatewayCore/CalendarGatewayCLIParsing.swift`
+- `Sources/GoogleCalendarGatewayCore/CalendarRawAPI.swift`
+- `Sources/GoogleCalendarGatewayCore/GoogleCalendarGatewayGraphQL.swift`
+- `Sources/GoogleCalendarGatewayCore/GoogleCalendarGatewayCLIParsing.swift`
 - `Tests/AppCoreTests/*`
 
 **Work**:
@@ -297,8 +297,8 @@ accepted in the design.
 
 **Write Scope**:
 
-- `impl-plans/active/calendar-gateway-review-findings-2026-07-02.md`
-- `impl-plans/active/calendar-gateway-core.md` or `impl-plans/completed/`
+- `impl-plans/active/google-calendar-gateway-review-findings-2026-07-02.md`
+- `impl-plans/active/google-calendar-gateway-core.md` or `impl-plans/completed/`
   only if the implementation step elects to close the shipped core plan
 - docs under `design-docs/specs/` only when implementation intentionally
   diverges from the accepted design
@@ -332,7 +332,7 @@ disjoint:
   API/variables tests are kept in separate files or coordinated before merge.
 
 Do not run TASK-004 and TASK-005 in parallel unless one implementer owns the
-shared `CalendarGatewayGraphQL.swift` edits. Do not run TASK-006 and TASK-007
+shared `GoogleCalendarGatewayGraphQL.swift` edits. Do not run TASK-006 and TASK-007
 in parallel unless ID validation is complete first.
 
 ## Verification Plan
@@ -344,7 +344,7 @@ handoff:
 swift test --filter <focused-test-name>
 swift test
 swift build
-swift run calendar-gateway --help
+swift run google-calendar-gateway --help
 mise run lint
 mise run build
 mise run test
@@ -386,7 +386,7 @@ manually and document that limitation in the progress log.
   loopback callback tolerance for stray local requests.
 - 2026-07-02: Added regression coverage in `CommandTests`,
   `RawCalendarAPITests`, `AuthRevokeTests`, `CachePruneTests`, and
-  `OAuthBootstrapTests`. Split cache behavior into `CalendarGatewayCache.swift`
+  `OAuthBootstrapTests`. Split cache behavior into `GoogleCalendarGatewayCache.swift`
   to keep Swift files under the repository size limit.
 - 2026-07-02: Added request-time OAuth scope coverage regression for the live
   token validation path and split CLI config/GraphQL validation coverage into
@@ -396,7 +396,7 @@ manually and document that limitation in the progress log.
   `swift test --filter loopbackReceiverIgnoresStrayRequestsUntilExpectedCallback`,
   `swift test --filter liveTokenValidationUsesScopeCoverageSemantics`,
   `swift test`, `mise run lint`, `mise run build`, `mise run test`, `swift build`,
-  `swift run calendar-gateway --help`, `git diff --check`, workflow YAML
+  `swift run google-calendar-gateway --help`, `git diff --check`, workflow YAML
   parsing via Ruby, and source/test line-count audit. Commands were run with
   the Xcode SDK environment required by the local macOS/Nix shell.
 - 2026-07-02: Addressed Step 6 self-review feedback for TASK-001 by replacing
@@ -415,7 +415,7 @@ manually and document that limitation in the progress log.
   selected Xcode Swift toolchain (`no such module 'SwiftShims'`). Reran with
   the Xcode SDK/toolchain environment and the focused test passed.
 - 2026-07-02: Reran broad verification after the TASK-008 test-integrity fix:
-  `swift test`, `swift build`, `swift run calendar-gateway --help`,
+  `swift test`, `swift build`, `swift run google-calendar-gateway --help`,
   `mise run build`, `mise run test`, `mise run lint`, and `git diff --check` passed.
   `mise run lint` was run inside `nix develop` because `swiftlint` was not
   available on the direct shell `PATH`.
@@ -433,7 +433,7 @@ manually and document that limitation in the progress log.
 - 2026-07-02: Final continuation verification passed with the Xcode
   SDK/toolchain environment: `swift test --filter
   tokenRefreshPersistsRotatedRefreshToken`, `swift test` with 103 tests,
-  `swift build`, `swift run calendar-gateway --help`, `mise run build`,
+  `swift build`, `swift run google-calendar-gateway --help`, `mise run build`,
   `mise run test`, `nix develop -c bash -lc '... mise run lint'`, `git diff --check`,
   and the Swift file line-count audit. `mise run lint` reported 0 violations in
   28 files.

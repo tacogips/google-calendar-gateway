@@ -1,5 +1,5 @@
 import Foundation
-@testable import CalendarGatewayCore
+@testable import GoogleCalendarGatewayCore
 
 final class RecordingCalendarProvider: CalendarEventProvider {
   struct DeleteCall {

@@ -1,7 +1,7 @@
 import Foundation
-import CalendarGatewayCore
+import GoogleCalendarGatewayCore
 
-let result = CalendarGatewayCLI().run(arguments: Array(CommandLine.arguments.dropFirst()))
+let result = GoogleCalendarGatewayCLI(mode: .writer).run(arguments: Array(CommandLine.arguments.dropFirst()))
 
 if !result.stdout.isEmpty {
   FileHandle.standardOutput.write(Data(result.stdout.utf8))

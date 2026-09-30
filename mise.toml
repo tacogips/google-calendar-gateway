@@ -36,9 +36,15 @@ swift build
 '''
 
 [tasks."run"]
-description = "Run the executable"
+description = "Run the reader executable"
 run = '''
-swift run calendar-gateway "$@"
+swift run google-calendar-gateway-reader "$@"
+'''
+
+[tasks."run:writer"]
+description = "Run the writer executable"
+run = '''
+swift run google-calendar-gateway-writer "$@"
 '''
 
 [tasks."test"]
@@ -66,7 +72,7 @@ scripts/build-homebrew-release.sh "$@"
 '''
 
 [tasks."homebrew:formula"]
-description = "Render Formula/calendar-gateway.rb from dist/homebrew checksums"
+description = "Render Formula/google-calendar-gateway.rb from dist/homebrew checksums"
 run = '''
 scripts/render-homebrew-formula.sh "$@"
 '''
@@ -79,7 +85,7 @@ if [ -z "$*" ]; then
   echo "usage: mise run homebrew:tap-formula -- <version>" >&2
   exit 2
 fi
-scripts/render-homebrew-formula.sh "$*" "../homebrew-tap/Formula/calendar-gateway.rb"
+scripts/render-homebrew-formula.sh "$*" "../homebrew-tap/Formula/google-calendar-gateway.rb"
 
 '''
 
@@ -90,7 +96,7 @@ scripts/build-homebrew-cask-release.sh "$@"
 '''
 
 [tasks."homebrew:cask"]
-description = "Render Casks/calendar-gateway.rb from dist/homebrew-cask checksums"
+description = "Render Casks/google-calendar-gateway.rb from dist/homebrew-cask checksums"
 run = '''
 scripts/render-homebrew-cask.sh "$@"
 '''
@@ -103,7 +109,7 @@ if [ -z "$*" ]; then
   echo "usage: mise run homebrew:tap-cask -- <version>" >&2
   exit 2
 fi
-scripts/render-homebrew-cask.sh "$*" "../homebrew-tap/Casks/calendar-gateway.rb"
+scripts/render-homebrew-cask.sh "$*" "../homebrew-tap/Casks/google-calendar-gateway.rb"
 
 '''
 

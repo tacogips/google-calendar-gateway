@@ -1,9 +1,9 @@
 import Testing
-@testable import CalendarGatewayCore
+@testable import GoogleCalendarGatewayCore
 
 @Test func createEventGraphQLSupportsMetadataAndConferenceCreation() throws {
   let result = try executeCalendarGraphQL(
-    service: CalendarGatewayService(config: testConfig(accessMode: .readWrite), provider: FakeCalendarProvider()),
+    service: GoogleCalendarGatewayService(config: testConfig(accessMode: .readWrite), provider: FakeCalendarProvider()),
     query: """
     mutation {
       createEvent(
@@ -42,7 +42,7 @@ import Testing
 }
 
 @Test func serviceSupportsTypedMetadataAndConferenceCreation() throws {
-  let event = try CalendarGatewayService(
+  let event = try GoogleCalendarGatewayService(
     config: testConfig(accessMode: .readWrite),
     provider: FakeCalendarProvider()
   ).createCalendarEvent(input: CalendarEventInput(
@@ -105,7 +105,7 @@ import Testing
 
 @Test func graphQLRejectsInvalidVisibilityAndTransparency() throws {
   let invalidVisibility = try executeCalendarGraphQL(
-    service: CalendarGatewayService(config: testConfig(accessMode: .readWrite), provider: FailingWriteProvider()),
+    service: GoogleCalendarGatewayService(config: testConfig(accessMode: .readWrite), provider: FailingWriteProvider()),
     query: """
     mutation {
       createEvent(
@@ -119,7 +119,7 @@ import Testing
     """
   )
   let invalidTransparency = try executeCalendarGraphQL(
-    service: CalendarGatewayService(config: testConfig(accessMode: .readWrite), provider: FailingWriteProvider()),
+    service: GoogleCalendarGatewayService(config: testConfig(accessMode: .readWrite), provider: FailingWriteProvider()),
     query: """
     mutation {
       createEvent(
@@ -142,8 +142,8 @@ import Testing
 }
 
 @Test func eventMetadataValidationRunsBeforeProviderCall() throws {
-  let blankRequestId = try requireCalendarGatewayError {
-    _ = try CalendarGatewayService(
+  let blankRequestId = try requireGoogleCalendarGatewayError {
+    _ = try GoogleCalendarGatewayService(
       config: testConfig(accessMode: .readWrite),
       provider: FailingWriteProvider()
     ).updateEvent(input: CalendarEventInput(
@@ -154,8 +154,8 @@ import Testing
     ))
   }
 
-  let missingCreateFlag = try requireCalendarGatewayError {
-    _ = try CalendarGatewayService(
+  let missingCreateFlag = try requireGoogleCalendarGatewayError {
+    _ = try GoogleCalendarGatewayService(
       config: testConfig(accessMode: .readWrite),
       provider: FailingWriteProvider()
     ).createCalendarEvent(input: CalendarEventInput(
