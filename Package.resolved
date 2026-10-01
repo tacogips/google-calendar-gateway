@@ -1,12 +1,12 @@
 {
-  "originHash" : "6dc13bba16d71ca7dc223bcd3ee0f8e4ec6f83ed34f252b650d944424f8cecb6",
+  "originHash" : "0029defa6e7081e8c000e12a3e8421016bb5bd1597f456a9b86772a717c3a779",
   "pins" : [
     {
       "identity" : "google-gateway-auth",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/tacogips/google-gateway-auth.git",
       "state" : {
-        "revision" : "28331014f2ab9f8f02f77d068421afac105150dc"
+        "revision" : "48e0112fb5eb057cf012194cfffaa2581ba29d76"
       }
     }
   ],
