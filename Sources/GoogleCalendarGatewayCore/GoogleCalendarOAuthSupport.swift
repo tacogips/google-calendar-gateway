@@ -166,7 +166,7 @@ private func validGoogleCalendarAccessTokenWithoutLock(
   return try refreshGoogleCalendarAccessToken(credential: credential, tokenStore: tokenStore)
 }
 
-private func withGoogleCalendarTokenStoreLock<T>(path: String, operation: () throws -> T) throws -> T {
+func withGoogleCalendarTokenStoreLock<T>(path: String, operation: () throws -> T) throws -> T {
   let lockPath = path + ".lock"
   let lockParent = try calendarTokenParent(lockPath, create: true)
   let fd = Darwin.openat(lockParent.fd, lockParent.leaf, O_CREAT | O_RDWR | O_NOFOLLOW, S_IRUSR | S_IWUSR)

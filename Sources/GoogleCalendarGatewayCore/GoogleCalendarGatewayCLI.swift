@@ -108,7 +108,7 @@ public struct GoogleCalendarGatewayCLI {
     default:
       try validateAllowedFlags(parsed.flags, commandFlags: [])
       throw GoogleCalendarGatewayError(
-        "Supported commands: graphql, config validate, auth <login|revoke|status>, cache prune, event <create|update|delete>",
+        "Supported commands: graphql, config validate, auth <login|logout|revoke|status>, cache prune, event <create|update|delete>",
         code: .invalidArgument,
         exitCode: .invalidCliUsage
       )
@@ -123,7 +123,7 @@ public struct GoogleCalendarGatewayCLI {
     pretty: Bool
   ) throws -> GoogleCalendarGatewayCommandResult {
     guard let credentialId = try getStringFlag(flags, "credential")
-      ?? (["login", "status"].contains(subcommand ?? "") ? "google-personal" : nil) else {
+      ?? (["login", "status", "logout"].contains(subcommand ?? "") ? "google-personal" : nil) else {
       throw GoogleCalendarGatewayError(
         "auth commands require --credential",
         code: .invalidArgument,
@@ -136,6 +136,11 @@ public struct GoogleCalendarGatewayCLI {
         config: try GoogleCalendarGatewayConfigLoader.loadConfig(configPath: configPath, environment: environment, synthesizedAccessMode: mode.synthesizedAccessMode)
       )
       return success(try service.getAuthStatus(credentialId: credentialId), pretty: pretty)
+    case "logout":
+      let service = GoogleCalendarGatewayService(
+        config: try GoogleCalendarGatewayConfigLoader.loadConfig(configPath: configPath, environment: environment, synthesizedAccessMode: mode.synthesizedAccessMode)
+      )
+      return success(try service.logoutAuth(credentialId: credentialId), pretty: pretty)
     case "revoke":
       let service = GoogleCalendarGatewayService(
         config: try GoogleCalendarGatewayConfigLoader.loadConfig(configPath: configPath, environment: environment, synthesizedAccessMode: mode.synthesizedAccessMode)
@@ -153,7 +158,7 @@ public struct GoogleCalendarGatewayCLI {
       return success(try service.login(credentialId: credentialId, options: options), pretty: pretty)
     default:
       throw GoogleCalendarGatewayError(
-        "auth requires one of: login, revoke, status",
+        "auth requires one of: login, logout, revoke, status",
         code: .invalidArgument,
         exitCode: .invalidCliUsage
       )
@@ -213,6 +218,7 @@ private func rootHelpText(mode: GoogleCalendarGatewayCLIMode) -> String {
     graphql --query-file <path> [--variables <json>|--variables-file <path>]
     config validate
     auth <login|status> [--credential <id>]
+    auth logout [--credential <id>]
     auth revoke --credential <id>
     auth login [--credential <id>] [--redirect-uri <loopback-url>] [--open-browser false] [--timeout-seconds <seconds>]
     cache prune [--calendar <id>|--all]
