@@ -10,7 +10,9 @@ final class CalendarTokenParent {
 
 func calendarTokenParent(_ path: String, create: Bool) throws -> CalendarTokenParent {
   let raw = URL(fileURLWithPath: path).standardizedFileURL.path
-  let normalized = raw.hasPrefix("/var/") ? "/private\(raw)" : raw
+  // Expand only the fixed macOS system aliases; the descriptor walk still
+  // rejects user-controlled symlinks in all remaining components.
+  let normalized = raw.hasPrefix("/var/") || raw.hasPrefix("/tmp/") ? "/private\(raw)" : raw
   guard normalized.hasPrefix("/") else { throw POSIXError(.EINVAL) }
   let parts = normalized.split(separator: "/").map(String.init)
   guard let leaf = parts.last, !leaf.isEmpty else { throw POSIXError(.EINVAL) }
