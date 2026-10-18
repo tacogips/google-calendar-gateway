@@ -3,6 +3,7 @@ import Foundation
 private enum TomlSection {
   case none
   case storage
+  case writeRetry
   case credential(Int)
   case calendar(Int)
 }
@@ -129,6 +130,7 @@ public enum GoogleCalendarGatewayConfigLoader {
     try validateOAuthClientSecretPaths(credentials)
 
     return GoogleCalendarGatewayConfig(
+      writeRetry: try GoogleCalendarWriteRetryPolicy.load(record: parsed.writeRetry, environment: sourceEnvironment),
       configPath: selectedConfigPath,
       storage: storage,
       credentials: credentials,
@@ -221,6 +223,7 @@ public enum GoogleCalendarGatewayConfigLoader {
     }
 
     return GoogleCalendarGatewayConfig(
+      writeRetry: try GoogleCalendarWriteRetryPolicy.load(environment: environment),
       configPath: configPath,
       storage: CalendarStorageConfig(cacheDir: defaultCacheDirectory(environment: environment)),
       credentials: [credential],
@@ -266,6 +269,7 @@ public enum GoogleCalendarGatewayConfigLoader {
 
 private struct ParsedToml {
   var storage: [String: Any]?
+  var writeRetry: [String: Any] = [:]
   var credentials: [[String: Any]]
   var accounts: [[String: Any]]
 }
@@ -277,6 +281,10 @@ private func parseTomlSubset(_ source: String) throws -> ParsedToml {
   for rawLine in source.split(separator: "\n", omittingEmptySubsequences: false) {
     let line = rawLine.trimmingCharacters(in: .whitespacesAndNewlines)
     if line.isEmpty || line.hasPrefix("#") {
+      continue
+    }
+    if line == "[write_retry]" {
+      section = .writeRetry
       continue
     }
     if line == "[storage]" {
@@ -299,8 +307,19 @@ private func parseTomlSubset(_ source: String) throws -> ParsedToml {
     }
     let key = line[..<equals].trimmingCharacters(in: .whitespacesAndNewlines)
     let rawValue = line[line.index(after: equals)...].trimmingCharacters(in: .whitespacesAndNewlines)
-    let value = try parseTomlValue(rawValue)
+    let value: Any
+    if case .writeRetry = section {
+        guard !rawValue.isEmpty, rawValue.utf8.count <= 2,
+              rawValue.utf8.allSatisfy({ (48...57).contains($0) }), let number = Int(rawValue) else {
+            throw configError("write_retry values must be bounded integers")
+        }
+        value = number
+    } else {
+        value = try parseTomlValue(rawValue)
+    }
     switch section {
+    case .writeRetry:
+      parsed.writeRetry[key] = value
     case .storage:
       parsed.storage?[key] = value
     case .credential(let index):

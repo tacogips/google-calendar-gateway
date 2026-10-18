@@ -14,10 +14,12 @@ public enum GoogleCalendarGatewayErrorCode: String, Sendable {
   case accountNotFound = "ACCOUNT_NOT_FOUND"
   case authRequired = "AUTH_REQUIRED"
   case configInvalid = "CONFIG_INVALID"
+  case cancelled = "CANCELLED"
   case credentialNotFound = "CREDENTIAL_NOT_FOUND"
   case eventNotFound = "EVENT_NOT_FOUND"
   case invalidArgument = "INVALID_ARGUMENT"
   case providerApiError = "PROVIDER_API_ERROR"
+  case mutationOutcomeUnknown = "MUTATION_OUTCOME_UNKNOWN"
   case providerRateLimited = "PROVIDER_RATE_LIMITED"
   case syncTokenExpired = "SYNC_TOKEN_EXPIRED"
   case writeDisabled = "WRITE_DISABLED"
@@ -149,6 +151,7 @@ public struct CalendarAccountConfig: Sendable {
 }
 
 public struct GoogleCalendarGatewayConfig: Sendable {
+  public var writeRetry: GoogleCalendarWriteRetryPolicy = .default
   public let configPath: String
   public let storage: CalendarStorageConfig
   public let credentials: [CalendarCredentialConfig]
@@ -343,7 +346,7 @@ public struct GoogleCalendarGatewayService {
   let provider: any CalendarEventProvider
 
   public init(config: GoogleCalendarGatewayConfig) {
-    self.init(config: config, provider: GoogleCalendarLiveClient())
+    self.init(config: config, provider: GoogleCalendarLiveClient(writeRetry: config.writeRetry))
   }
 
   public init(config: GoogleCalendarGatewayConfig, provider: any CalendarEventProvider) {
@@ -587,7 +590,7 @@ public struct GoogleCalendarGatewayService {
 public typealias GoogleCalendarGatewayClient = GoogleCalendarGatewayService
 
 public enum Version {
-  public static let current = "0.1.10"
+  public static let current = "0.1.11"
 }
 
 func validateSendUpdates(_ sendUpdates: String?) throws {

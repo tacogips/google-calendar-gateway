@@ -1,0 +1,7 @@
+# Bounded write retries (0.1.11)
+
+User requested configurable initial wait and maximum retries across gateway writes. Use per-config immutable typed policy, TOML/environment overrides, default2seconds/3retries, n1...60/m0...5, exponential60second cap. Retry only confirmed429/documented quota403 rejection or preconnection errors; decline mutation redirects so a later connection failure cannot hide the original write. Never replay ambiguous5xx/timeout/lost response or a confirmed write merely because parsing/readback failed. Preserve all existing permissions/read/OAuth behavior. Honor Retry-After minimums; stop if above cap. Request-scoped deadlines and cancellation prevent later attempts.
+
+Validate real URLSession paths with local URLProtocol fixtures, fake backoff/deadline clocks, config integration, exact attempt budget, quota vs permission, transient connection vs ambiguous dispatch, and no duplicate write after success. Full tests/build/lint and both macOS release archives are required before publication; no live provider writes are used.
+
+Validation: 19 XCTest tests plus 139 Swift Testing tests passed, including 13 retry/config/deadline fixtures. SwiftLint has only the two existing OAuthBootstrap formatting warnings. Independent Apple gateway maintainer review found no blocker. Successful event writes missing a returned identity are reported as unknown without replay. No live provider writes were performed.

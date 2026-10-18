@@ -335,13 +335,59 @@ enum GoogleCalendarHTTPFailureKind {
 func performGoogleCalendarHTTPRequest(
   _ request: URLRequest,
   context: String,
-  failureKind: GoogleCalendarHTTPFailureKind = .general
+  failureKind: GoogleCalendarHTTPFailureKind = .general,
+  writeRetry: GoogleCalendarWriteRetryPolicy? = nil,
+  sleep: (TimeInterval) throws -> Void = googleCalendarWriteRetrySleep
+) throws -> (data: Data, response: HTTPURLResponse) {
+  var retryIndex = 0
+  while true {
+    if writeRetry != nil { try GoogleCalendarWriteExecutionContext.check() }
+    try Task<Never, Never>.checkCancellation()
+    let resolved: (data: Data, response: HTTPURLResponse)
+    do {
+      resolved = try performSingleGoogleCalendarHTTPRequest(request, context: context, isMutation: writeRetry != nil)
+    } catch let failure as GoogleCalendarWriteNotDispatched {
+      guard let policy = writeRetry, retryIndex < policy.maxRetries else { throw failure.error }
+      try sleep(policy.delay(retryIndex: retryIndex))
+      retryIndex += 1
+      continue
+    }
+    if (200..<300).contains(resolved.response.statusCode) { return resolved }
+    if let policy = writeRetry {
+      if googleCalendarWriteWasRateLimited(status: resolved.response.statusCode, data: resolved.data), retryIndex < policy.maxRetries,
+         let delay = googleCalendarWriteRetryDelay(policy: policy, retryIndex: retryIndex, response: resolved.response) {
+        try sleep(delay)
+        retryIndex += 1
+        continue
+      }
+      if (500...599).contains(resolved.response.statusCode) {
+        throw googleCalendarMutationOutcomeUnknown(status: resolved.response.statusCode)
+      }
+    }
+    throw googleCalendarHTTPError(context: context, statusCode: resolved.response.statusCode, failureKind: failureKind)
+  }
+}
+
+func googleCalendarMutationOutcomeUnknown(status: Int? = nil) -> GoogleCalendarGatewayError {
+  GoogleCalendarGatewayError("Google Calendar mutation outcome is unknown; do not replay automatically",
+    code: .mutationOutcomeUnknown, exitCode: .graphqlExecutionError,
+    details: status.map { ["httpStatus": String($0)] } ?? [:])
+}
+
+private func performSingleGoogleCalendarHTTPRequest(
+  _ request: URLRequest,
+  context: String,
+  isMutation: Bool
 ) throws -> (data: Data, response: HTTPURLResponse) {
   let semaphore = DispatchSemaphore(value: 0)
   let box = HTTPResultBox()
-  URLSession.shared.dataTask(with: request) { data, response, error in
+  let task = URLSession.shared.dataTask(with: request) { data, response, error in
     defer {
       semaphore.signal()
+    }
+    if isMutation, let httpResponse = response as? HTTPURLResponse {
+      box.store(.success((data ?? Data(), httpResponse)))
+      return
     }
     if let error {
       box.store(.failure(error))
@@ -357,7 +403,9 @@ func performGoogleCalendarHTTPRequest(
       return
     }
     box.store(.success((data, httpResponse)))
-  }.resume()
+  }
+  if isMutation { task.delegate = GoogleCalendarWriteRedirectBlocker() }
+  task.resume()
   semaphore.wait()
 
   let resolved: (data: Data, response: HTTPURLResponse)
@@ -369,9 +417,15 @@ func performGoogleCalendarHTTPRequest(
         exitCode: .providerApiError
       )
     }()
-  } catch let error as GoogleCalendarGatewayError {
-    throw error
   } catch {
+    if isMutation {
+      if googleCalendarWriteFailedBeforeConnection(error) {
+        throw GoogleCalendarWriteNotDispatched(error: GoogleCalendarGatewayError(
+          "Google Calendar write could not connect", code: .providerApiError, exitCode: .providerApiError))
+      }
+      throw googleCalendarMutationOutcomeUnknown()
+    }
+    if let known = error as? GoogleCalendarGatewayError { throw known }
     throw GoogleCalendarGatewayError(
       context,
       code: .providerApiError,
@@ -380,13 +434,6 @@ func performGoogleCalendarHTTPRequest(
     )
   }
 
-  guard (200..<300).contains(resolved.response.statusCode) else {
-    throw googleCalendarHTTPError(
-      context: context,
-      statusCode: resolved.response.statusCode,
-      failureKind: failureKind
-    )
-  }
   return resolved
 }
 

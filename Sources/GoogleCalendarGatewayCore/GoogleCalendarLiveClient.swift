@@ -1,6 +1,7 @@
 import Foundation
 
 struct GoogleCalendarLiveClient: CalendarEventProvider {
+  var writeRetry: GoogleCalendarWriteRetryPolicy = .default
   func listCalendars(credential: CalendarCredentialConfig) throws -> [ProviderCalendarInfo] {
     let token = try validGoogleCalendarAccessToken(credential: credential, use: .read)
     var calendars: [ProviderCalendarInfo] = []
@@ -99,7 +100,12 @@ struct GoogleCalendarLiveClient: CalendarEventProvider {
     request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
     request.httpBody = try eventBodyData(input: input, requireStartEnd: true)
-    let object = try performGoogleCalendarJSONRequest(request: request, context: "Google Calendar events.insert failed")
+    let object = try performGoogleCalendarJSONRequest(request: request, context: "Google Calendar events.insert failed", writeRetry: writeRetry)
+    guard let identifier = object["id"] as? String,
+          !identifier.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+      throw GoogleCalendarGatewayError("Write succeeded but returned no event identity; do not resend automatically",
+        code: .mutationOutcomeUnknown, exitCode: .graphqlExecutionError)
+    }
     return CalendarEvent.fromGoogle(object, accountId: account.id, calendarId: calendarId)
   }
 
@@ -122,8 +128,13 @@ struct GoogleCalendarLiveClient: CalendarEventProvider {
     let object = try performGoogleCalendarJSONRequest(
       request: request,
       context: "Google Calendar events.patch failed",
-      failureKind: .event
+      failureKind: .event, writeRetry: writeRetry
     )
+    guard let identifier = object["id"] as? String,
+          !identifier.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+      throw GoogleCalendarGatewayError("Write succeeded but returned no event identity; do not resend automatically",
+        code: .mutationOutcomeUnknown, exitCode: .graphqlExecutionError)
+    }
     return CalendarEvent.fromGoogle(object, accountId: account.id, calendarId: calendarId)
   }
 
@@ -145,7 +156,7 @@ struct GoogleCalendarLiveClient: CalendarEventProvider {
     _ = try performGoogleCalendarHTTPRequest(
       request,
       context: "Google Calendar events.delete failed",
-      failureKind: .event
+      failureKind: .event, writeRetry: writeRetry
     )
     return [
       "accountId": account.id,
@@ -175,7 +186,8 @@ struct GoogleCalendarLiveClient: CalendarEventProvider {
       urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
       urlRequest.httpBody = Data(bodyJSON.utf8)
     }
-    let response = try performGoogleCalendarHTTPRequest(urlRequest, context: "Google Calendar raw API request failed")
+    let response = try performGoogleCalendarHTTPRequest(urlRequest, context: "Google Calendar raw API request failed",
+      writeRetry: rawCalendarAPITokenUse(for: request) == .write ? writeRetry : nil)
     return [
       "status": response.response.statusCode,
       "body": try rawCalendarAPIResponseBody(response.data)
@@ -394,11 +406,19 @@ func performGoogleCalendarJSONRequest(
 private func performGoogleCalendarJSONRequest(
   request: URLRequest,
   context: String,
-  failureKind: GoogleCalendarHTTPFailureKind = .general
+  failureKind: GoogleCalendarHTTPFailureKind = .general,
+  writeRetry: GoogleCalendarWriteRetryPolicy? = nil
 ) throws -> [String: Any] {
-  let response = try performGoogleCalendarHTTPRequest(request, context: context, failureKind: failureKind)
-  let json = try JSONSerialization.jsonObject(with: response.data)
+  let response = try performGoogleCalendarHTTPRequest(request, context: context, failureKind: failureKind, writeRetry: writeRetry)
+  let json: Any
+  do {
+    json = try JSONSerialization.jsonObject(with: response.data)
+  } catch {
+    if writeRetry != nil { throw googleCalendarMutationOutcomeUnknown() }
+    throw error
+  }
   guard let object = json as? [String: Any] else {
+    if writeRetry != nil { throw googleCalendarMutationOutcomeUnknown() }
     throw GoogleCalendarGatewayError(
       "Google Calendar response was not a JSON object",
       code: .providerApiError,
